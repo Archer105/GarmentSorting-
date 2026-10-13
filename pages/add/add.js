@@ -2,13 +2,18 @@ const auth = require('../../utils/auth')
 const api = require('../../utils/api')
 const util = require('../../utils/util')
 const C = require('../../utils/constants')
+const tagSvc = require('../../utils/tags')
 
-function buildState(list, selected) {
+function buildState(names, selected) {
   const state = {}
-  list.forEach((key) => {
-    state[key] = !!selected && selected.indexOf(key) >= 0
+  ;(names || []).forEach((name) => {
+    state[name] = !!selected && selected.indexOf(name) >= 0
   })
   return state
+}
+
+function namesOf(options) {
+  return (options || []).map((item) => item.name)
 }
 
 Page({
@@ -18,7 +23,7 @@ Page({
     categories: C.CATEGORIES,
     colors: C.COLOR_PRESETS,
     seasons: C.SEASONS,
-    tagChips: C.TAG_PRESETS.slice(),
+    tagChips: [],
     category: C.CATEGORIES[0].key,
     color: '',
     seasonState: {},
@@ -41,7 +46,24 @@ Page({
     }
     auth.requireLogin().then((session) => {
       if (!session) return
-      if (id) this.loadGarment(id)
+      // 先把「衣橱里已经用过的标签」拉出来，和预设、自定义一起组成可选项
+      this.prepareTags().then(() => {
+        if (id) this.loadGarment(id)
+      })
+    })
+  },
+
+  /** 标签选项 = 预设 + 自定义 + 衣橱里已用过的 */
+  prepareTags(selected) {
+    return api.listGarments().then((res) => {
+      const used = tagSvc.collectUsedTags(res.ok ? res.data : [])
+      const options = tagSvc.buildTagOptions(C.TAG_PRESETS, used)
+      this.allowedTags = namesOf(options)
+      this.setData({
+        tagChips: options,
+        tagState: buildState(namesOf(options), selected || []),
+      })
+      return options
     })
   },
 
@@ -55,11 +77,9 @@ Page({
       const item = res.data
       const seasonState = buildState(C.SEASONS, item.season ? item.season.split('/') : [])
       const tags = item.tags || []
-      const tagChips = C.TAG_PRESETS.slice()
-      tags.forEach((tag) => {
-        if (tagChips.indexOf(tag) < 0) tagChips.push(tag)
-      })
-      const tagState = buildState(tagChips, tags)
+      const options = tagSvc.buildTagOptions(C.TAG_PRESETS, tags.concat(this.allowedTags || []))
+      this.allowedTags = namesOf(options)
+      const tagState = buildState(this.allowedTags, tags)
 
       this.setData({
         name: item.name || '',
@@ -68,7 +88,7 @@ Page({
         note: item.note || '',
         imagePath: item.image_path || '',
         seasonState: seasonState,
-        tagChips: tagChips,
+        tagChips: options,
         tagState: tagState,
       })
 
@@ -131,23 +151,65 @@ Page({
     state[key] = !state[key]
     this.setData({ seasonState: state })
   },
+
+  /* ------------------------------- 标签 ------------------------------- */
+
+  /** 交叉分类：一件单品可以同时挂多个标签，点一下切换选中状态 */
   onPickTag(e) {
     const key = e.currentTarget.dataset.key
     const state = Object.assign({}, this.data.tagState)
     state[key] = !state[key]
     this.setData({ tagState: state })
   },
+
   onTagInput(e) {
     this.setData({ tagInput: e.detail.value })
   },
+
+  /** 新增自定义标签：立即持久化，下次进页面仍在候选里 */
   addTag() {
     const tag = (this.data.tagInput || '').trim()
-    if (!tag) return
-    const chips = this.data.tagChips.slice()
+    if (!tag) {
+      util.toast('请输入标签内容')
+      return
+    }
+    if (tag.length > 8) {
+      util.toast('标签最多 8 个字')
+      return
+    }
+    if ((this.allowedTags || []).indexOf(tag) >= 0) {
+      const state = Object.assign({}, this.data.tagState)
+      state[tag] = true
+      this.setData({ tagState: state, tagInput: '' })
+      util.toast('标签已存在，已为你选中')
+      return
+    }
+
+    tagSvc.addCustomTag(tag)
+    const options = tagSvc.buildTagOptions(C.TAG_PRESETS, this.usedTagsNow().concat(tag))
+    this.allowedTags = namesOf(options)
     const state = Object.assign({}, this.data.tagState)
-    if (chips.indexOf(tag) < 0) chips.push(tag)
     state[tag] = true
-    this.setData({ tagChips: chips, tagState: state, tagInput: '' })
+    this.setData({ tagChips: options, tagState: state, tagInput: '' })
+  },
+
+  usedTagsNow() {
+    return Object.keys(this.data.tagState).filter((key) => this.data.tagState[key])
+  },
+
+  /** 删除自定义标签（内置预设标签不可删） */
+  removeTag(e) {
+    const tag = e.currentTarget.dataset.key
+    if (!tag) return
+    util.confirm('删除自定义标签「' + tag + '」？', '只从标签库里移除，已打过该标签的单品不受影响。').then((ok) => {
+      if (!ok) return
+      tagSvc.removeCustomTag(tag)
+      const options = tagSvc.buildTagOptions(C.TAG_PRESETS, this.usedTagsNow())
+      this.allowedTags = namesOf(options)
+      const state = Object.assign({}, this.data.tagState)
+      delete state[tag]
+      this.setData({ tagChips: options, tagState: state })
+    })
   },
 
   /* ------------------------------- 保存 ------------------------------- */

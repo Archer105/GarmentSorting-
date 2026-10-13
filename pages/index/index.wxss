@@ -137,6 +137,12 @@
   color: #fff;
 }
 
+.weather-note {
+  margin-top: 18rpx;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.72);
+}
+
 /* ---------------- 生成按钮 ---------------- */
 .gen-btn {
   margin: 32rpx 0 8rpx;

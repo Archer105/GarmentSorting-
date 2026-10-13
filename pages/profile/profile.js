@@ -15,7 +15,6 @@ Page({
     outfitsLoading: true,
     editVisible: false,
     nicknameInput: '',
-    cityInput: '',
     saving: false,
   },
 
@@ -44,7 +43,6 @@ Page({
       avatarText: name.slice(0, 1) || '衣',
       city: (settings && settings.city) || '北京',
       nicknameInput: name,
-      cityInput: (settings && settings.city) || '',
     })
   },
 
@@ -79,7 +77,6 @@ Page({
     this.setData({
       editVisible: true,
       nicknameInput: this.data.displayName,
-      cityInput: this.data.city,
     })
   },
 
@@ -91,28 +88,28 @@ Page({
     this.setData({ nicknameInput: e.detail.value })
   },
 
-  onCity(e) {
-    this.setData({ cityInput: e.detail.value })
+  /** 常驻城市改为独立的「城市选择页」：支持输入候选 + 省份列表选择 */
+  goCity() {
+    wx.navigateTo({ url: '/pages/city/city' })
   },
 
   saveEdit() {
     if (this.data.saving) return
     const nickname = (this.data.nicknameInput || '').trim()
-    const city = (this.data.cityInput || '').trim()
     if (!nickname) {
       util.toast('请填写昵称')
       return
     }
     this.setData({ saving: true })
-    api.saveSettings({ nickname: nickname, city: city }).then((res) => {
+    api.saveSettings({ nickname: nickname }).then((res) => {
       this.setData({ saving: false })
       if (!res.ok) {
         util.toast(res.message || '保存失败')
         return
       }
-      app.setSettings({ nickname: nickname, city: city })
+      app.setSettings({ nickname: nickname })
       this.setData({ editVisible: false })
-      this.applyUser({ nickname: nickname, city: city })
+      this.applyUser({ nickname: nickname, city: this.data.city })
       util.toast('已保存')
     })
   },

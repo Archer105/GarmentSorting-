@@ -6,7 +6,6 @@ const weatherSvc = require('../../utils/weather')
 const util = require('../../utils/util')
 const C = require('../../utils/constants')
 
-const CITY_SUGGEST = ['北京', '上海', '广州', '深圳', '杭州', '成都', '武汉', '西安', '南京', '重庆']
 const PLACEHOLDER = '/images/placeholder-garment.png'
 
 Page({
@@ -21,6 +20,8 @@ Page({
     weather: null,
     weatherDesc: '',
     weatherLoading: false,
+    refining: false,
+    updatedText: '',
     generating: false,
     outfit: null,
     outfitItems: [],
@@ -33,9 +34,6 @@ Page({
     manualTemp: '18-24',
     weatherOptions: C.WEATHER_OPTIONS,
     tempRanges: C.TEMP_RANGES,
-    cityVisible: false,
-    cityInput: '',
-    citySuggest: CITY_SUGGEST,
   },
 
   onLoad() {
@@ -50,7 +48,9 @@ Page({
     auth.requireLogin().then((session) => {
       if (!session) return
       this.applyUser(session)
-      this.refresh()
+      // 每次进入首页都按「常驻城市 + 当前选择日期」自动取一次天气：
+      // 命中缓存/本地估算时是毫秒级的，不会卡界面。
+      this.refresh().then(() => this.autoWeather())
     })
   },
 
@@ -128,32 +128,54 @@ Page({
   onPickDate(e) {
     const key = e.currentTarget.dataset.key
     if (key === this.data.dateKey) return
-    const next = this.data.dateOptions.find((item) => item.key === key)
-    const matches = this.data.weather && this.data.weather.date === (next ? next.date : '')
-    this.setData({
-      dateKey: key,
-      weather: matches ? this.data.weather : null,
-      weatherDesc: matches ? this.data.weatherDesc : '',
+    this.setData({ dateKey: key, weather: null, weatherDesc: '', updatedText: '' }, () => {
+      this.autoWeather()
     })
   },
 
-  onAutoWeather() {
-    if (this.data.weatherLoading) return
+  /**
+   * 自动取天气：先同步拿到「缓存 或 本地气候估算」并立刻上屏，
+   * 再在后台做一次精修（实时接口 / AI），成功就静默替换。
+   */
+  autoWeather(force) {
+    const city = this.data.city || app.city()
+    const date = this.currentDate()
     this.setData({ weatherLoading: true })
-    weatherSvc
-      .getWeather({ city: this.data.city, date: this.currentDate() })
+
+    return weatherSvc
+      .getWeather({ city: city, date: date, force: !!force })
       .then((res) => {
         this.setData({ weatherLoading: false })
         if (!res.ok) {
-          util.toast(res.message || '获取天气失败，请手动设置')
+          util.toast(res.message || '暂时拿不到天气，可手动设置')
           return
         }
         this.applyWeather(res.source, res.data)
+        if (res.refinable) this.refine(city, date)
       })
       .catch(() => {
         this.setData({ weatherLoading: false })
-        util.toast('获取天气失败，请手动设置')
       })
+  },
+
+  refine(city, date) {
+    this.setData({ refining: true })
+    weatherSvc
+      .refineWeather({ city: city, date: date })
+      .then((res) => {
+        this.setData({ refining: false })
+        if (!res || !res.ok) return
+        // 期间用户可能换了城市/日期，或手动设置了天气 —— 这些情况下丢弃后台结果
+        if (this.data.city !== city || this.currentDate() !== date) return
+        if (this.data.weather && this.data.weather.source === 'manual') return
+        this.applyWeather(res.source, res.data)
+      })
+      .catch(() => this.setData({ refining: false }))
+  },
+
+  onRefreshWeather() {
+    if (this.data.weatherLoading) return
+    this.autoWeather(true)
   },
 
   applyWeather(source, data) {
@@ -161,16 +183,26 @@ Page({
       source: source,
       sourceLabel: C.WEATHER_SOURCE_LABEL[source] || '',
     })
-    const desc = data.desc ? data.desc : ''
-    this.setData({ weather: weather, weatherDesc: desc })
+    this.setData({
+      weather: weather,
+      weatherDesc: data.desc || '',
+      updatedText: '更新于 ' + this.clockText(),
+    })
     app.globalData.weather = weather
+  },
+
+  clockText() {
+    const d = new Date()
+    const pad = (n) => (n < 10 ? '0' + n : '' + n)
+    return pad(d.getHours()) + ':' + pad(d.getMinutes())
   },
 
   openManual() {
     this.setData({
       manualVisible: true,
       manualWeather: this.data.weather ? this.data.weather.weather : this.data.manualWeather,
-      manualTemp: this.data.weather && this.data.weather.temp_key ? this.data.weather.temp_key : this.data.manualTemp,
+      manualTemp:
+        this.data.weather && this.data.weather.temp_key ? this.data.weather.temp_key : this.data.manualTemp,
     })
   },
 
@@ -206,34 +238,8 @@ Page({
 
   /* ------------------------------- 城市 ------------------------------- */
 
-  openCity() {
-    this.setData({ cityVisible: true, cityInput: this.data.city })
-  },
-
-  closeCity() {
-    this.setData({ cityVisible: false })
-  },
-
-  onCityInput(e) {
-    this.setData({ cityInput: e.detail.value })
-  },
-
-  pickCity(e) {
-    this.setData({ cityInput: e.currentTarget.dataset.city })
-  },
-
-  confirmCity() {
-    const city = (this.data.cityInput || '').trim()
-    if (!city) {
-      util.toast('请输入城市名称')
-      return
-    }
-    const current = app.globalData.settings || {}
-    app.setSettings({ city: city })
-    this.setData({ city: city, cityVisible: false, weather: null, weatherDesc: '' })
-    api.saveSettings({ nickname: current.nickname, city: city }).then((res) => {
-      if (!res.ok) util.toast(res.message || '城市保存失败')
-    })
+  goCity() {
+    wx.navigateTo({ url: '/pages/city/city' })
   },
 
   /* ------------------------------ 生成穿搭 ------------------------------ */

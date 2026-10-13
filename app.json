@@ -5,6 +5,7 @@
     "pages/wardrobe/wardrobe",
     "pages/add/add",
     "pages/detail/detail",
+    "pages/city/city",
     "pages/chat/chat",
     "pages/profile/profile"
   ],

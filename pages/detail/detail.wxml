@@ -1,4 +1,4 @@
-<view class="page" wx:if="{{item}}">
+<view class="page page-enter" wx:if="{{item}}">
   <view class="hero">
     <image class="hero-img" src="{{thumb}}" mode="aspectFill" />
     <view class="hero-badge">{{item.category}}</view>
@@ -27,7 +27,7 @@
   </view>
 </view>
 
-<view class="page" wx:else>
+<view class="page page-enter" wx:else>
   <view class="empty">
     <view class="empty-title">{{loading ? '加载中…' : '单品不存在或无权访问'}}</view>
   </view>

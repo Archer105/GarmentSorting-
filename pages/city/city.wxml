@@ -1,0 +1,84 @@
+<view class="page page-enter">
+  <view class="head">
+    <view class="head-title">常驻城市</view>
+    <view class="head-sub">用于按天气给穿搭建议。可以手动输入，也可以按省份选择。</view>
+    <view class="current">当前：<text class="current-city">{{city}}</text></view>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{mode === 'search' ? 'active' : ''}}" data-mode="search" bindtap="switchMode">输入城市</view>
+    <view class="tab {{mode === 'province' ? 'active' : ''}}" data-mode="province" bindtap="switchMode">按省份选择</view>
+  </view>
+
+  <view class="body">
+    <!-- 输入 / 搜索 -->
+    <scroll-view wx:if="{{mode === 'search'}}" scroll-y class="scroll-body" enhanced show-scrollbar="{{false}}">
+      <view class="pad">
+        <view class="field search-field">
+          <text class="search-icon">🔍</text>
+          <input
+            placeholder="输入城市名，如 杭州"
+            placeholder-class="ph"
+            value="{{keyword}}"
+            bindinput="onInput"
+            confirm-type="search"
+          />
+          <view wx:if="{{keyword}}" class="clear" bindtap="clearKeyword">✕</view>
+        </view>
+
+        <view wx:if="{{canUseInput}}" class="use-input" bindtap="useInput">
+          <text class="use-input-label">使用「{{keyword}}」</text>
+          <text class="use-input-hint">没有收录也没关系，可以直接用</text>
+        </view>
+
+        <view class="list-title">{{keyword ? '匹配到的城市' : '热门城市'}}</view>
+
+        <view wx:if="{{suggest.length}}" class="city-grid">
+          <view
+            wx:for="{{suggest}}"
+            wx:key="city"
+            class="city-chip {{city === item.city ? 'active' : ''}}"
+            data-city="{{item.city}}"
+            bindtap="pickCity"
+          >
+            <text class="city-name">{{item.city}}</text>
+            <text class="city-prov">{{item.province}}</text>
+          </view>
+        </view>
+
+        <view wx:else class="empty">
+          <view class="empty-title">没有匹配到城市</view>
+          <view class="empty-desc">点上面的「使用」按钮即可保存你输入的城市</view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 省份 - 城市 -->
+    <view wx:else class="province-wrap">
+      <scroll-view scroll-y class="prov-col" enhanced show-scrollbar="{{false}}">
+        <view
+          wx:for="{{provinces}}"
+          wx:key="*this"
+          class="prov-item {{activeProvince === item ? 'active' : ''}}"
+          data-name="{{item}}"
+          bindtap="pickProvince"
+        >{{item}}</view>
+      </scroll-view>
+
+      <scroll-view scroll-y class="city-col" enhanced show-scrollbar="{{false}}">
+        <view class="city-col-title">{{activeProvince}}</view>
+        <view
+          wx:for="{{provinceCities}}"
+          wx:key="*this"
+          class="city-row {{city === item ? 'active' : ''}}"
+          data-city="{{item}}"
+          bindtap="pickCity"
+        >
+          <text class="city-row-name">{{item}}</text>
+          <text wx:if="{{city === item}}" class="tick">当前</text>
+        </view>
+        <view class="city-col-foot"></view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

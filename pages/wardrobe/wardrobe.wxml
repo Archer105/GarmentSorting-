@@ -23,6 +23,26 @@
         >{{item.icon ? item.icon + ' ' : ''}}{{item.key}}</view>
       </view>
     </scroll-view>
+
+    <!-- 标签交叉筛选：可多选，需同时命中 -->
+    <view wx:if="{{tagOptions.length}}" class="tag-bar">
+      <view class="tag-bar-head">
+        <text class="tag-bar-title">标签筛选</text>
+        <text class="tag-bar-hint">{{tagFilterActive ? '已选 ' + activeTags.length + ' 个 · 需同时命中' : '可多选，交叉筛选'}}</text>
+        <text wx:if="{{tagFilterActive}}" class="tag-bar-clear" bindtap="clearTags">清除</text>
+      </view>
+      <scroll-view scroll-x class="tag-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="tag-list">
+          <view
+            wx:for="{{tagOptions}}"
+            wx:key="name"
+            class="chip tag-chip {{item.active ? 'active' : ''}}"
+            data-key="{{item.name}}"
+            bindtap="onPickTag"
+          >{{item.name}}<text class="tag-count">{{item.count}}</text></view>
+        </view>
+      </scroll-view>
+    </view>
   </view>
 
   <view class="body">
@@ -32,9 +52,10 @@
 
     <view wx:elif="{{!list.length}}" class="empty">
       <view class="empty-emoji">🧺</view>
-      <view class="empty-title">{{keyword || category !== '全部' ? '没有找到符合条件的单品' : '衣橱还空着'}}</view>
-      <view class="empty-desc">{{keyword || category !== '全部' ? '换个关键词或分类试试' : '拍几张照片，把常穿的衣服收进来'}}</view>
-      <button wx:if="{{!keyword && category === '全部'}}" class="btn btn-primary empty-btn" bindtap="goAdd">上传第一件</button>
+      <view class="empty-title">{{keyword || category !== '全部' || tagFilterActive ? '没有找到符合条件的单品' : '衣橱还空着'}}</view>
+      <view class="empty-desc">{{keyword || category !== '全部' || tagFilterActive ? '换个关键词、分类或标签组合试试' : '拍几张照片，把常穿的衣服收进来'}}</view>
+      <button wx:if="{{tagFilterActive}}" class="btn btn-ghost empty-btn" bindtap="clearTags">清除标签筛选</button>
+      <button wx:elif="{{!keyword && category === '全部'}}" class="btn btn-primary empty-btn" bindtap="goAdd">上传第一件</button>
     </view>
 
     <view wx:else class="grid">

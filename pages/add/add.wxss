@@ -90,6 +90,51 @@
   color: var(--text);
 }
 
+.block-tip {
+  margin: -8rpx 0 18rpx;
+  font-size: 22rpx;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.block-tip.small {
+  margin: 14rpx 0 0;
+}
+
+/* ---------------- 标签芯片 ---------------- */
+.tag-chip {
+  padding-right: 18rpx;
+}
+
+.tag-chip.custom {
+  background: var(--brand-soft-2);
+  border-color: #ded4ff;
+  color: var(--brand);
+}
+
+.tag-chip.custom.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.tag-del {
+  margin-left: 12rpx;
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 50%;
+  background: rgba(107, 78, 255, 0.16);
+  color: var(--brand);
+  font-size: 20rpx;
+  line-height: 32rpx;
+  text-align: center;
+}
+
+.tag-chip.active .tag-del {
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+
 .req {
   color: var(--danger);
 }

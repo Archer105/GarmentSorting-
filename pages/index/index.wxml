@@ -25,11 +25,11 @@
       <view class="weather-main">
         <view class="weather-icon">{{weather ? weather.icon : '🌤️'}}</view>
         <view class="weather-info">
-          <view class="weather-temp">{{weather ? (weather.temperature || weather.label) : '未获取天气'}}</view>
+          <view class="weather-temp">{{weather ? (weather.temperature || weather.label) : '获取天气中…'}}</view>
           <view class="weather-meta">
             <text>{{city}}</text>
             <text class="dot">·</text>
-            <text>{{weather ? weather.label : '点击下方按钮获取'}}</text>
+            <text>{{weather ? weather.label : '正在按常驻城市获取'}}</text>
             <text wx:if="{{weather && weather.sourceLabel}}" class="src">{{weather.sourceLabel}}</text>
           </view>
         </view>
@@ -37,9 +37,11 @@
       </view>
       <view wx:if="{{weatherDesc}}" class="weather-desc">{{weatherDesc}}</view>
       <view class="weather-actions">
-        <view class="weather-btn" bindtap="onAutoWeather">{{weatherLoading ? '获取中…' : '自动获取天气'}}</view>
-        <view class="weather-btn ghost" bindtap="openCity">切换城市</view>
+        <view class="weather-btn" bindtap="onRefreshWeather">{{weatherLoading ? '获取中…' : '刷新天气'}}</view>
+        <view class="weather-btn ghost" bindtap="goCity">切换城市</view>
       </view>
+      <view wx:if="{{refining}}" class="weather-note">正在后台精修天气数据…</view>
+      <view wx:elif="{{updatedText}}" class="weather-note">{{updatedText}} · 每次打开自动更新</view>
     </view>
 
     <!-- 生成穿搭 -->
@@ -87,7 +89,7 @@
         <view class="h3">我的衣橱</view>
         <view class="link" bindtap="goWardrobe">全部 ›</view>
       </view>
-      <view class="stat-total">{{stats.total}} 件单品</view>
+      <view class="stat-total">{{total}} 件单品</view>
       <view class="cat-row">
         <view wx:for="{{categoryStats}}" wx:key="key" class="cat-chip">
           <text>{{item.icon}}</text>
@@ -126,21 +128,5 @@
       >{{item.label}}</view>
     </view>
     <button class="btn btn-accent btn-block" bindtap="confirmManual">确定</button>
-  </view>
-
-  <!-- 城市输入 -->
-  <view wx:if="{{cityVisible}}" class="mask" bindtap="closeCity"></view>
-  <view wx:if="{{cityVisible}}" class="sheet-panel">
-    <view class="panel-head">
-      <view class="h2">常驻城市</view>
-      <view class="panel-close" bindtap="closeCity">关闭</view>
-    </view>
-    <view class="field">
-      <input placeholder="如：杭州" placeholder-class="ph" value="{{cityInput}}" bindinput="onCityInput" />
-    </view>
-    <view class="opt-wrap city-suggest">
-      <view wx:for="{{citySuggest}}" wx:key="*this" class="chip" data-city="{{item}}" bindtap="pickCity">{{item}}</view>
-    </view>
-    <button class="btn btn-primary btn-block" bindtap="confirmCity">保存</button>
   </view>
 </view>

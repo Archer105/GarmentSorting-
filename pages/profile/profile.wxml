@@ -6,7 +6,7 @@
       <view class="avatar">{{avatarText}}</view>
       <view class="user-info">
         <view class="user-name" bindtap="openEdit">{{displayName}} <text class="edit-hint">编辑</text></view>
-        <view class="user-sub">常驻城市：{{city}}</view>
+        <view class="user-sub" bindtap="goCity">常驻城市：{{city}} <text class="edit-hint">切换 ›</text></view>
       </view>
     </view>
 
@@ -81,9 +81,11 @@
       <input placeholder="怎么称呼你" placeholder-class="ph" value="{{nicknameInput}}" bindinput="onNickname" maxlength="12" />
     </view>
     <view class="panel-label">常驻城市（用于天气穿搭）</view>
-    <view class="field">
-      <input placeholder="如：杭州" placeholder-class="ph" value="{{cityInput}}" bindinput="onCity" maxlength="12" />
+    <view class="menu-row city-row" bindtap="goCity">
+      <text class="city-value">{{city || '未设置'}}</text>
+      <text class="menu-arrow">›</text>
     </view>
+    <view class="edit-hint-text">城市支持手动输入，也可以按省份从列表里选。</view>
     <button class="btn btn-primary btn-block save" bindtap="saveEdit" loading="{{saving}}" disabled="{{saving}}">保存</button>
   </view>
 </view>

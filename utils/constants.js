@@ -50,7 +50,8 @@ TEMP_RANGES.forEach((item) => {
 /** 天气来源的中文说明 */
 const WEATHER_SOURCE_LABEL = {
   realtime: '实时',
-  ai: 'AI 估算',
+  ai: 'AI 精修',
+  local: '气候估算',
   manual: '手动',
 }
 

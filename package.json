@@ -1,8 +1,12 @@
 {
   "name": "wardrobe-outfit-miniprogram",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "衣橱穿搭小程序：拍照收纳衣物 + 天气穿搭建议 + AI 对话搭配",
+  "scripts": {
+    "check": "node tests/smoke.js",
+    "test": "node tests/units.js && node tests/smoke.js"
+  },
   "dependencies": {
     "@tencent-ai/workbuddy-cloud-sdk": "dev"
   }

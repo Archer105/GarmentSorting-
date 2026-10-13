@@ -230,6 +230,26 @@
   font-size: 28rpx;
 }
 
+/* 编辑弹层里的「常驻城市」入口 */
+.city-row {
+  height: 96rpx;
+  border: 1rpx solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 0 28rpx;
+  background: var(--brand-soft-2);
+}
+
+.city-value {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.edit-hint-text {
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: var(--muted);
+}
+
 .save {
   margin-top: 44rpx;
 }

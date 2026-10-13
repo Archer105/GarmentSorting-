@@ -279,9 +279,20 @@ async function getSettings() {
   return { ok: true, data: res.data }
 }
 
+/** 只写入本次真正修改的字段，避免「只改城市」把昵称清空 */
+function settingsFields(patch) {
+  const fields = {}
+  if (patch && patch.nickname !== undefined) fields.nickname = patch.nickname || null
+  if (patch && patch.city !== undefined) fields.city = patch.city || null
+  return fields
+}
+
 async function saveSettings(patch) {
   const session = await getSession()
   if (!session || !session.user) return { ok: false, message: '请先登录' }
+
+  const fields = settingsFields(patch)
+  if (!Object.keys(fields).length) return { ok: true, data: null }
 
   const existing = await cloud.database.from('user_settings').select('owner_id').maybeSingle()
   if (existing.error) return { ok: false, message: existing.error.message }
@@ -289,11 +300,7 @@ async function saveSettings(patch) {
   if (existing.data) {
     const res = await cloud.database
       .from('user_settings')
-      .update({
-        nickname: patch.nickname,
-        city: patch.city,
-        updated_at: new Date().toISOString(),
-      })
+      .update(Object.assign({}, fields, { updated_at: new Date().toISOString() }))
       .eq('owner_id', session.user.id)
       .select()
     if (res.error) return { ok: false, message: res.error.message }
@@ -304,11 +311,7 @@ async function saveSettings(patch) {
 
   const res = await cloud.database
     .from('user_settings')
-    .insert({
-      nickname: patch.nickname,
-      city: patch.city,
-      owner_name: ownerName(),
-    })
+    .insert(Object.assign({ owner_name: ownerName() }, fields))
     .select()
   if (res.error) return { ok: false, message: res.error.message }
   return { ok: true, data: res.data && res.data[0] }
