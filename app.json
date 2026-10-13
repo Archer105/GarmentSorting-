@@ -1,0 +1,53 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/index/index",
+    "pages/wardrobe/wardrobe",
+    "pages/add/add",
+    "pages/detail/detail",
+    "pages/chat/chat",
+    "pages/profile/profile"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "backgroundColor": "#F6F6FA",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTitleText": "衣橱穿搭",
+    "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "color": "#9AA0B4",
+    "selectedColor": "#6B4EFF",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "穿搭",
+        "iconPath": "images/tab/tab-home.png",
+        "selectedIconPath": "images/tab/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/wardrobe/wardrobe",
+        "text": "衣橱",
+        "iconPath": "images/tab/tab-closet.png",
+        "selectedIconPath": "images/tab/tab-closet-active.png"
+      },
+      {
+        "pagePath": "pages/chat/chat",
+        "text": "对话",
+        "iconPath": "images/tab/tab-chat.png",
+        "selectedIconPath": "images/tab/tab-chat-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/tab/tab-me.png",
+        "selectedIconPath": "images/tab/tab-me-active.png"
+      }
+    ]
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

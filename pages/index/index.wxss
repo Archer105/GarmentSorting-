@@ -1,0 +1,356 @@
+.page {
+  padding-bottom: 60rpx;
+}
+
+/* ---------------- 顶部 ---------------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32rpx 24rpx;
+  background: linear-gradient(180deg, #f1ecff 0%, #f6f6fa 100%);
+}
+
+.greet {
+  font-size: 42rpx;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sub {
+  margin-top: 8rpx;
+  font-size: 25rpx;
+  color: var(--muted);
+}
+
+.avatar {
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b6bff, #5f3ff0);
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(107, 78, 255, 0.28);
+}
+
+/* ---------------- 日期 ---------------- */
+.date-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+/* ---------------- 天气卡 ---------------- */
+.weather-card {
+  background: linear-gradient(140deg, #7d5cff 0%, #5f3ff0 100%);
+  border-radius: var(--radius-lg);
+  padding: 34rpx 32rpx;
+  box-shadow: 0 16rpx 40rpx rgba(107, 78, 255, 0.26);
+  color: #fff;
+}
+
+.weather-main {
+  display: flex;
+  align-items: center;
+}
+
+.weather-icon {
+  font-size: 76rpx;
+  line-height: 1;
+  margin-right: 24rpx;
+}
+
+.weather-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.weather-temp {
+  font-size: 44rpx;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.weather-meta {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.82);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dot {
+  padding: 0 10rpx;
+}
+
+.src {
+  margin-left: 12rpx;
+  padding: 2rpx 14rpx;
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 21rpx;
+}
+
+.weather-edit {
+  padding: 10rpx 24rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 24rpx;
+  flex-shrink: 0;
+}
+
+.weather-desc {
+  margin-top: 22rpx;
+  padding-top: 22rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.2);
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.weather-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 28rpx;
+}
+
+.weather-btn {
+  flex: 1;
+  height: 74rpx;
+  border-radius: 37rpx;
+  background: #fff;
+  color: var(--brand);
+  font-size: 27rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weather-btn.ghost {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+/* ---------------- 生成按钮 ---------------- */
+.gen-btn {
+  margin: 32rpx 0 8rpx;
+}
+
+/* ---------------- 穿搭结果 ---------------- */
+.outfit-card {
+  margin-top: 24rpx;
+}
+
+.save-chip {
+  padding: 8rpx 24rpx;
+  border-radius: 26rpx;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 24rpx;
+}
+
+.save-chip.done {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.outfit-reason {
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+.outfit-scroll {
+  margin-top: 28rpx;
+  white-space: nowrap;
+}
+
+.outfit-list {
+  display: inline-flex;
+  gap: 22rpx;
+  padding-bottom: 6rpx;
+}
+
+.outfit-item {
+  width: 200rpx;
+  flex-shrink: 0;
+}
+
+.outfit-img {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: var(--radius-md);
+  background: #f2f2f7;
+}
+
+.outfit-name {
+  margin-top: 14rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.outfit-cat {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: var(--muted);
+}
+
+.tips {
+  margin-top: 28rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid var(--line);
+}
+
+.tip-row {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 10rpx;
+}
+
+.tip-dot {
+  color: var(--brand);
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.tip-text {
+  flex: 1;
+  font-size: 25rpx;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+
+/* ---------------- 引导 ---------------- */
+.guide-card {
+  margin-top: 24rpx;
+}
+
+.guide-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+
+.guide-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+  font-size: 26rpx;
+  color: var(--text-2);
+}
+
+.guide-idx {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 23rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ---------------- 衣橱概览 ---------------- */
+.stat-card {
+  margin-top: 24rpx;
+}
+
+.link {
+  font-size: 25rpx;
+  color: var(--brand);
+}
+
+.stat-total {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: var(--muted);
+}
+
+.cat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.cat-chip {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 22rpx;
+  border-radius: 24rpx;
+  background: var(--brand-soft-2);
+  font-size: 24rpx;
+  color: var(--text-2);
+}
+
+.cat-num {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+/* ---------------- 弹层 ---------------- */
+.mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(20, 20, 32, 0.42);
+  z-index: 100;
+}
+
+.sheet-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 101;
+  background: #fff;
+  border-radius: 40rpx 40rpx 0 0;
+  padding: 40rpx 32rpx calc(40rpx + env(safe-area-inset-bottom));
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-close {
+  font-size: 26rpx;
+  color: var(--muted);
+}
+
+.panel-label {
+  margin: 32rpx 0 16rpx;
+  font-size: 26rpx;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.opt-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.city-suggest {
+  margin: 24rpx 0 32rpx;
+}
+
+.ph {
+  color: #b9bdcb;
+  font-size: 28rpx;
+}

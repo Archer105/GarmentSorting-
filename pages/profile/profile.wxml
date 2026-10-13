@@ -1,0 +1,89 @@
+<view class="page">
+  <view class="hero" style="padding-top: {{topPadding}}px">
+    <view class="blob"></view>
+    <view class="hero-top">我的</view>
+    <view class="user-card">
+      <view class="avatar">{{avatarText}}</view>
+      <view class="user-info">
+        <view class="user-name" bindtap="openEdit">{{displayName}} <text class="edit-hint">编辑</text></view>
+        <view class="user-sub">常驻城市：{{city}}</view>
+      </view>
+    </view>
+
+    <view class="stat-row">
+      <view class="stat" bindtap="goWardrobe">
+        <view class="stat-num">{{total}}</view>
+        <view class="stat-label">衣橱单品</view>
+      </view>
+      <view class="stat-line"></view>
+      <view class="stat">
+        <view class="stat-num">{{outfits.length}}</view>
+        <view class="stat-label">收藏搭配</view>
+      </view>
+      <view class="stat-line"></view>
+      <view class="stat">
+        <view class="stat-num">{{categoryCount}}</view>
+        <view class="stat-label">覆盖分类</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="container">
+    <!-- 穿搭记录 -->
+    <view class="section-title">穿搭记录</view>
+
+    <view wx:if="{{outfitsLoading}}" class="card tip-card">加载中…</view>
+
+    <view wx:elif="{{!outfits.length}}" class="card tip-card">
+      还没有收藏的搭配。<text class="link" bindtap="goHome">去生成一套 ›</text>
+    </view>
+
+    <view wx:else>
+      <view wx:for="{{outfits}}" wx:key="id" class="card record-card">
+        <view class="row-between">
+          <view class="record-title">{{item.title}}</view>
+          <view class="record-del" data-id="{{item.id}}" bindtap="onDeleteOutfit">删除</view>
+        </view>
+        <view class="record-meta">{{item.metaText}}</view>
+        <view wx:if="{{item.advice}}" class="record-advice">{{item.advice}}</view>
+      </view>
+    </view>
+
+    <!-- 设置 -->
+    <view class="section-title">设置</view>
+    <view class="card menu-card">
+      <view class="menu-row" bindtap="openEdit">
+        <text>昵称与常驻城市</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-row" bindtap="goWardrobe">
+        <text>管理我的衣橱</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-row" bindtap="showAbout">
+        <text>关于本小程序</text>
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+
+    <button class="btn btn-plain btn-block logout" bindtap="onLogout">退出登录</button>
+  </view>
+
+  <!-- 编辑资料 -->
+  <view wx:if="{{editVisible}}" class="mask" bindtap="closeEdit"></view>
+  <view wx:if="{{editVisible}}" class="sheet-panel">
+    <view class="panel-head">
+      <view class="h2">编辑资料</view>
+      <view class="panel-close" bindtap="closeEdit">关闭</view>
+    </view>
+    <view class="panel-label">昵称</view>
+    <view class="field">
+      <input placeholder="怎么称呼你" placeholder-class="ph" value="{{nicknameInput}}" bindinput="onNickname" maxlength="12" />
+    </view>
+    <view class="panel-label">常驻城市（用于天气穿搭）</view>
+    <view class="field">
+      <input placeholder="如：杭州" placeholder-class="ph" value="{{cityInput}}" bindinput="onCity" maxlength="12" />
+    </view>
+    <button class="btn btn-primary btn-block save" bindtap="saveEdit" loading="{{saving}}" disabled="{{saving}}">保存</button>
+  </view>
+</view>

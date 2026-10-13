@@ -1,0 +1,186 @@
+.chat-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
+}
+
+/* ---------------- 上下文条 ---------------- */
+.ctx-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22rpx 32rpx;
+  background: linear-gradient(120deg, #f1ecff 0%, #eefaf0 100%);
+}
+
+.ctx-title {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.ctx-sub {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: var(--muted);
+}
+
+.ctx-clear {
+  padding: 10rpx 24rpx;
+  border-radius: 24rpx;
+  background: #fff;
+  font-size: 23rpx;
+  color: var(--text-2);
+}
+
+/* ---------------- 消息 ---------------- */
+.msg-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.msg-list {
+  padding: 32rpx 28rpx 40rpx;
+}
+
+.msg-row {
+  display: flex;
+  margin-bottom: 28rpx;
+  align-items: flex-start;
+}
+
+.msg-row.me {
+  justify-content: flex-end;
+}
+
+.avatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b6bff, #5f3ff0);
+  color: #fff;
+  font-size: 26rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.bubble {
+  max-width: 520rpx;
+  padding: 22rpx 26rpx;
+  border-radius: 28rpx;
+  font-size: 28rpx;
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.bubble-ai {
+  background: #fff;
+  color: var(--text);
+  border-top-left-radius: 8rpx;
+  box-shadow: var(--shadow);
+}
+
+.bubble-me {
+  background: linear-gradient(135deg, #8b6bff, #5f3ff0);
+  color: #fff;
+  border-top-right-radius: 8rpx;
+}
+
+.typing {
+  color: var(--muted);
+  font-size: 26rpx;
+}
+
+/* ---------------- 引导 ---------------- */
+.intro {
+  padding: 60rpx 20rpx 20rpx;
+  text-align: center;
+}
+
+.intro-emoji {
+  font-size: 88rpx;
+  line-height: 1;
+}
+
+.intro-title {
+  margin-top: 24rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.intro-desc {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: var(--muted);
+}
+
+.quick-wrap {
+  margin-top: 40rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+  align-items: center;
+}
+
+.quick-item {
+  width: 100%;
+  padding: 24rpx 28rpx;
+  border-radius: var(--radius-md);
+  background: #fff;
+  font-size: 26rpx;
+  color: var(--text-2);
+  text-align: left;
+  box-shadow: var(--shadow);
+}
+
+/* ---------------- 输入 ---------------- */
+.input-bar {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 20rpx 28rpx;
+  background: #fff;
+  border-top: 1rpx solid var(--line);
+}
+
+.input-box {
+  flex: 1;
+  height: 84rpx;
+  border-radius: 42rpx;
+  background: #f5f5f9;
+  padding: 0 28rpx;
+  display: flex;
+  align-items: center;
+}
+
+.input-box input {
+  width: 100%;
+  font-size: 28rpx;
+}
+
+.ph {
+  color: #b9bdcb;
+  font-size: 26rpx;
+}
+
+.send-btn {
+  flex-shrink: 0;
+  height: 84rpx;
+  padding: 0 38rpx;
+  border-radius: 42rpx;
+  background: linear-gradient(135deg, #7ad97a, #4cb84f);
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.send-btn.disabled {
+  background: #e4e4ec;
+  color: #a9adbb;
+}

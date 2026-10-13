@@ -1,0 +1,6 @@
+{
+  "name": "@tencent-ai/workbuddy-cloud-sdk",
+  "version": "0.1.3-dev.c090db7.202610050023",
+  "main": "index.js",
+  "miniprogram": "miniprogram.js"
+}

@@ -1,0 +1,256 @@
+/* app.wxss —— 全局设计变量与公共样式
+   设计语言参考：紫白主色 + 清新绿主行动按钮 + 大圆角卡片 + 浅灰底 */
+
+page {
+  /* 主色（紫） */
+  --brand: #6b4eff;
+  --brand-dark: #5a3ce0;
+  --brand-soft: #eee9ff;
+  --brand-soft-2: #f5f2ff;
+
+  /* 行动色（绿） */
+  --accent: #5ec65e;
+  --accent-dark: #46b04a;
+  --accent-soft: #eaf8ea;
+
+  /* 中性色 */
+  --bg: #f6f6fa;
+  --card: #ffffff;
+  --line: #ededf3;
+  --text: #1f2233;
+  --text-2: #5b6076;
+  --muted: #9aa0b4;
+
+  /* 语义色 */
+  --warn: #ff8a3d;
+  --danger: #f2555a;
+
+  --radius-lg: 32rpx;
+  --radius-md: 24rpx;
+  --radius-sm: 16rpx;
+  --shadow: 0 8rpx 32rpx rgba(31, 34, 51, 0.06);
+  --shadow-strong: 0 12rpx 40rpx rgba(107, 78, 255, 0.18);
+
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+view,
+text,
+image,
+scroll-view,
+input,
+textarea,
+button {
+  box-sizing: border-box;
+}
+
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: 40rpx;
+}
+
+.container {
+  padding: 24rpx 32rpx;
+}
+
+/* ---------- 卡片 ---------- */
+.card {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 32rpx;
+}
+
+.card + .card {
+  margin-top: 24rpx;
+}
+
+/* ---------- 文本 ---------- */
+.h1 {
+  font-size: 44rpx;
+  font-weight: 700;
+  letter-spacing: 0.5rpx;
+}
+
+.h2 {
+  font-size: 34rpx;
+  font-weight: 600;
+}
+
+.h3 {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.text-2 {
+  color: var(--text-2);
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 24rpx;
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 92rpx;
+  border-radius: 46rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  border: none;
+  line-height: 1;
+}
+
+.btn::after {
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #8b6bff 0%, #5f3ff0 100%);
+  color: #fff;
+  box-shadow: var(--shadow-strong);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, #7ad97a 0%, #4cb84f 100%);
+  color: #fff;
+  box-shadow: 0 12rpx 32rpx rgba(94, 198, 94, 0.28);
+}
+
+.btn-ghost {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.btn-plain {
+  background: #fff;
+  color: var(--text);
+  border: 1rpx solid var(--line);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+}
+
+/* ---------- 标签 / 胶囊 ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 28rpx;
+  background: #fff;
+  color: var(--text-2);
+  font-size: 24rpx;
+  border: 1rpx solid var(--line);
+}
+
+.chip.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  font-weight: 600;
+}
+
+.chip-soft {
+  background: var(--brand-soft);
+  border-color: transparent;
+  color: var(--brand);
+}
+
+/* ---------- 输入 ---------- */
+.field {
+  display: flex;
+  align-items: center;
+  height: 96rpx;
+  background: var(--card);
+  border-radius: var(--radius-md);
+  padding: 0 28rpx;
+  border: 1rpx solid var(--line);
+}
+
+.field input {
+  flex: 1;
+  height: 100%;
+  font-size: 30rpx;
+  color: var(--text);
+}
+
+.field-focus {
+  border-color: var(--brand);
+  background: var(--brand-soft-2);
+}
+
+/* ---------- 布局 ---------- */
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gap-s {
+  gap: 12rpx;
+}
+
+.gap-m {
+  gap: 20rpx;
+}
+
+.wrap {
+  flex-wrap: wrap;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.ellipsis {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hairline {
+  height: 1rpx;
+  background: var(--line);
+}
+
+/* ---------- 空状态 ---------- */
+.empty {
+  padding: 120rpx 40rpx;
+  text-align: center;
+}
+
+.empty-title {
+  margin-top: 24rpx;
+  font-size: 30rpx;
+  color: var(--text-2);
+}
+
+.empty-desc {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: var(--muted);
+}
+
+.safe-bottom {
+  height: env(safe-area-inset-bottom);
+}

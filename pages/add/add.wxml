@@ -1,0 +1,110 @@
+<view class="page">
+  <!-- 图片 -->
+  <view class="photo-card">
+    <view wx:if="{{imageSrc}}" class="photo-box" bindtap="onPickImage">
+      <image class="photo" src="{{imageSrc}}" mode="aspectFill" />
+      <view class="photo-retake">重拍 / 换图</view>
+    </view>
+    <view wx:else class="photo-empty" bindtap="onPickImage">
+      <view class="photo-empty-icon">📷</view>
+      <view class="photo-empty-title">拍照或从相册选择</view>
+      <view class="photo-empty-desc">建议正面平铺拍摄，搭配效果更好</view>
+    </view>
+    <view wx:if="{{uploading}}" class="photo-loading">
+      <text>图片上传中…</text>
+    </view>
+  </view>
+
+  <view class="container">
+    <!-- 名称 -->
+    <view class="block">
+      <view class="block-label">名称 <text class="req">*</text></view>
+      <view class="field">
+        <input placeholder="如：白色圆领T恤" placeholder-class="ph" value="{{name}}" bindinput="onName" maxlength="20" />
+      </view>
+    </view>
+
+    <!-- 分类 -->
+    <view class="block">
+      <view class="block-label">分类 <text class="req">*</text></view>
+      <view class="opt-wrap">
+        <view
+          wx:for="{{categories}}"
+          wx:key="key"
+          class="chip {{category === item.key ? 'active' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onPickCategory"
+        >{{item.icon}} {{item.key}}</view>
+      </view>
+    </view>
+
+    <!-- 颜色 -->
+    <view class="block">
+      <view class="block-label">主色</view>
+      <view class="opt-wrap">
+        <view
+          wx:for="{{colors}}"
+          wx:key="*this"
+          class="chip {{color === item ? 'active' : ''}}"
+          data-key="{{item}}"
+          bindtap="onPickColor"
+        >{{item}}</view>
+      </view>
+    </view>
+
+    <!-- 季节 -->
+    <view class="block">
+      <view class="block-label">适合季节（可多选）</view>
+      <view class="opt-wrap">
+        <view
+          wx:for="{{seasons}}"
+          wx:key="*this"
+          class="chip {{seasonState[item] ? 'active' : ''}}"
+          data-key="{{item}}"
+          bindtap="onPickSeason"
+        >{{item}}</view>
+      </view>
+    </view>
+
+    <!-- 标签 -->
+    <view class="block">
+      <view class="block-label">标签（可多选）</view>
+      <view class="opt-wrap">
+        <view
+          wx:for="{{tagChips}}"
+          wx:key="*this"
+          class="chip {{tagState[item] ? 'active' : ''}}"
+          data-key="{{item}}"
+          bindtap="onPickTag"
+        >{{item}}</view>
+      </view>
+      <view class="tag-add">
+        <view class="field tag-input">
+          <input placeholder="自定义标签" placeholder-class="ph" value="{{tagInput}}" bindinput="onTagInput" maxlength="8" />
+        </view>
+        <view class="tag-add-btn" bindtap="addTag">添加</view>
+      </view>
+    </view>
+
+    <!-- 备注 -->
+    <view class="block">
+      <view class="block-label">备注</view>
+      <view class="textarea-box">
+        <textarea
+          placeholder="如：去年买的，略大"
+          placeholder-class="ph"
+          value="{{note}}"
+          bindinput="onNote"
+          maxlength="100"
+          auto-height
+        />
+      </view>
+    </view>
+
+    <button class="btn btn-accent btn-block save-btn" bindtap="onSave" loading="{{saving}}" disabled="{{saving}}">
+      {{saving ? '保存中…' : (editing ? '保存修改' : '加入衣橱')}}
+    </button>
+
+    <button wx:if="{{editing}}" class="btn btn-plain btn-block del-btn" bindtap="onDelete">删除这件单品</button>
+  </view>
+</view>

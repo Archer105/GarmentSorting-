@@ -1,0 +1,12 @@
+# 依赖：本地安装，不提交（发布产物 miniprogram_npm/ 已提交，保证可直接运行）
+node_modules/
+
+# 微信开发者工具本地配置
+project.private.config.json
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/

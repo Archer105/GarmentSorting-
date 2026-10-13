@@ -1,0 +1,90 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: 80rpx;
+}
+
+.hero {
+  position: relative;
+  background: #eceafb;
+}
+
+.hero-img {
+  width: 100%;
+  height: 720rpx;
+  display: block;
+}
+
+.hero-badge {
+  position: absolute;
+  left: 32rpx;
+  bottom: 32rpx;
+  padding: 10rpx 26rpx;
+  border-radius: 30rpx;
+  background: rgba(20, 20, 32, 0.5);
+  color: #fff;
+  font-size: 24rpx;
+}
+
+.container {
+  padding: 32rpx;
+}
+
+.name {
+  font-size: 42rpx;
+  font-weight: 700;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 22rpx;
+}
+
+.meta-pill {
+  padding: 10rpx 24rpx;
+  border-radius: 24rpx;
+  background: var(--brand-soft-2);
+  color: var(--brand);
+  font-size: 24rpx;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 22rpx;
+}
+
+.tag {
+  padding: 8rpx 22rpx;
+  border-radius: 22rpx;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 23rpx;
+}
+
+.note {
+  margin-top: 28rpx;
+  padding-top: 26rpx;
+  border-top: 1rpx solid var(--line);
+  font-size: 26rpx;
+  color: var(--text-2);
+  line-height: 1.7;
+}
+
+.created {
+  margin-top: 24rpx;
+  font-size: 23rpx;
+  color: var(--muted);
+}
+
+.act {
+  margin-top: 24rpx;
+}
+
+.del {
+  color: var(--danger);
+  border-color: #ffe1e2;
+}

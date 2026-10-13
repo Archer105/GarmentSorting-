@@ -1,0 +1,59 @@
+<view class="page">
+  <view class="head">
+    <view class="field search-field">
+      <text class="search-icon">🔍</text>
+      <input
+        placeholder="搜索名称、颜色、标签"
+        placeholder-class="ph"
+        value="{{keyword}}"
+        bindinput="onSearch"
+        confirm-type="search"
+      />
+      <view wx:if="{{keyword}}" class="clear" bindtap="clearSearch">✕</view>
+    </view>
+
+    <scroll-view scroll-x class="cat-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="cat-list">
+        <view
+          wx:for="{{categoryTabs}}"
+          wx:key="key"
+          class="chip {{category === item.key ? 'active' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onPickCategory"
+        >{{item.icon ? item.icon + ' ' : ''}}{{item.key}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="body">
+    <view wx:if="{{loading}}" class="empty">
+      <view class="empty-title">加载中…</view>
+    </view>
+
+    <view wx:elif="{{!list.length}}" class="empty">
+      <view class="empty-emoji">🧺</view>
+      <view class="empty-title">{{keyword || category !== '全部' ? '没有找到符合条件的单品' : '衣橱还空着'}}</view>
+      <view class="empty-desc">{{keyword || category !== '全部' ? '换个关键词或分类试试' : '拍几张照片，把常穿的衣服收进来'}}</view>
+      <button wx:if="{{!keyword && category === '全部'}}" class="btn btn-primary empty-btn" bindtap="goAdd">上传第一件</button>
+    </view>
+
+    <view wx:else class="grid">
+      <view
+        wx:for="{{list}}"
+        wx:key="id"
+        class="g-item"
+        data-id="{{item.id}}"
+        bindtap="goDetail"
+      >
+        <view class="g-img-wrap">
+          <image class="g-img" src="{{item.thumb}}" mode="aspectFill" lazy-load />
+          <view class="g-cat">{{item.category}}</view>
+        </view>
+        <view class="g-name ellipsis">{{item.name}}</view>
+        <view class="g-meta ellipsis">{{item.meta}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="fab" bindtap="goAdd">＋</view>
+</view>

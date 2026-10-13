@@ -1,0 +1,146 @@
+<view class="page">
+  <!-- 顶部标题 -->
+  <view class="topbar" style="padding-top: {{topPadding}}px">
+    <view class="topbar-left">
+      <view class="greet">{{greeting}}，{{displayName}}</view>
+      <view class="sub">今天想穿点什么？</view>
+    </view>
+    <view class="avatar" bindtap="goProfile">{{avatarText}}</view>
+  </view>
+
+  <view class="container">
+    <!-- 日期选择 -->
+    <view class="date-row">
+      <view
+        wx:for="{{dateOptions}}"
+        wx:key="key"
+        class="chip {{dateKey === item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="onPickDate"
+      >{{item.label}}</view>
+    </view>
+
+    <!-- 天气卡片 -->
+    <view class="weather-card">
+      <view class="weather-main">
+        <view class="weather-icon">{{weather ? weather.icon : '🌤️'}}</view>
+        <view class="weather-info">
+          <view class="weather-temp">{{weather ? (weather.temperature || weather.label) : '未获取天气'}}</view>
+          <view class="weather-meta">
+            <text>{{city}}</text>
+            <text class="dot">·</text>
+            <text>{{weather ? weather.label : '点击下方按钮获取'}}</text>
+            <text wx:if="{{weather && weather.sourceLabel}}" class="src">{{weather.sourceLabel}}</text>
+          </view>
+        </view>
+        <view class="weather-edit" bindtap="openManual">手动</view>
+      </view>
+      <view wx:if="{{weatherDesc}}" class="weather-desc">{{weatherDesc}}</view>
+      <view class="weather-actions">
+        <view class="weather-btn" bindtap="onAutoWeather">{{weatherLoading ? '获取中…' : '自动获取天气'}}</view>
+        <view class="weather-btn ghost" bindtap="openCity">切换城市</view>
+      </view>
+    </view>
+
+    <!-- 生成穿搭 -->
+    <button class="btn btn-primary btn-block gen-btn" bindtap="onGenerate" loading="{{generating}}" disabled="{{generating}}">
+      {{generating ? '正在搭配…' : (outfit ? '换一套搭配' : '生成今日穿搭')}}
+    </button>
+
+    <!-- 穿搭结果 -->
+    <view wx:if="{{outfit}}" class="card outfit-card">
+      <view class="row-between">
+        <view class="h2">{{outfit.title}}</view>
+        <view class="save-chip {{saved ? 'done' : ''}}" bindtap="onSaveOutfit">{{saved ? '已收藏' : '收藏'}}</view>
+      </view>
+      <view wx:if="{{outfit.reason}}" class="outfit-reason">{{outfit.reason}}</view>
+
+      <scroll-view scroll-x class="outfit-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="outfit-list">
+          <view wx:for="{{outfitItems}}" wx:key="id" class="outfit-item" data-id="{{item.id}}" bindtap="goDetail">
+            <image class="outfit-img" src="{{item.thumb}}" mode="aspectFill" />
+            <view class="outfit-name ellipsis">{{item.name}}</view>
+            <view class="outfit-cat">{{item.category}}</view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view wx:if="{{outfit.tips.length}}" class="tips">
+        <view wx:for="{{outfit.tips}}" wx:key="*this" class="tip-row">
+          <text class="tip-dot">•</text>
+          <text class="tip-text">{{item}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 无结果时的引导 -->
+    <view wx:if="{{!outfit && !generating}}" class="card guide-card">
+      <view class="guide-title">三步得到今日穿搭</view>
+      <view class="guide-row"><text class="guide-idx">1</text><text>设置常驻城市与天气</text></view>
+      <view class="guide-row"><text class="guide-idx">2</text><text>把常穿的衣服拍照上传到衣橱</text></view>
+      <view class="guide-row"><text class="guide-idx">3</text><text>点「生成今日穿搭」，AI 会从你的衣橱里挑</text></view>
+    </view>
+
+    <!-- 衣橱概览 -->
+    <view class="card stat-card">
+      <view class="row-between">
+        <view class="h3">我的衣橱</view>
+        <view class="link" bindtap="goWardrobe">全部 ›</view>
+      </view>
+      <view class="stat-total">{{stats.total}} 件单品</view>
+      <view class="cat-row">
+        <view wx:for="{{categoryStats}}" wx:key="key" class="cat-chip">
+          <text>{{item.icon}}</text>
+          <text class="cat-name">{{item.key}}</text>
+          <text class="cat-num">{{item.count}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 手动设置天气 -->
+  <view wx:if="{{manualVisible}}" class="mask" bindtap="closeManual"></view>
+  <view wx:if="{{manualVisible}}" class="sheet-panel">
+    <view class="panel-head">
+      <view class="h2">手动设置天气</view>
+      <view class="panel-close" bindtap="closeManual">关闭</view>
+    </view>
+    <view class="panel-label">天气</view>
+    <view class="opt-wrap">
+      <view
+        wx:for="{{weatherOptions}}"
+        wx:key="key"
+        class="chip {{manualWeather === item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="pickWeather"
+      >{{item.icon}} {{item.label}}</view>
+    </view>
+    <view class="panel-label">温度</view>
+    <view class="opt-wrap">
+      <view
+        wx:for="{{tempRanges}}"
+        wx:key="key"
+        class="chip {{manualTemp === item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="pickTemp"
+      >{{item.label}}</view>
+    </view>
+    <button class="btn btn-accent btn-block" bindtap="confirmManual">确定</button>
+  </view>
+
+  <!-- 城市输入 -->
+  <view wx:if="{{cityVisible}}" class="mask" bindtap="closeCity"></view>
+  <view wx:if="{{cityVisible}}" class="sheet-panel">
+    <view class="panel-head">
+      <view class="h2">常驻城市</view>
+      <view class="panel-close" bindtap="closeCity">关闭</view>
+    </view>
+    <view class="field">
+      <input placeholder="如：杭州" placeholder-class="ph" value="{{cityInput}}" bindinput="onCityInput" />
+    </view>
+    <view class="opt-wrap city-suggest">
+      <view wx:for="{{citySuggest}}" wx:key="*this" class="chip" data-city="{{item}}" bindtap="pickCity">{{item}}</view>
+    </view>
+    <button class="btn btn-primary btn-block" bindtap="confirmCity">保存</button>
+  </view>
+</view>

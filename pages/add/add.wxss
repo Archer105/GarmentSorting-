@@ -1,0 +1,157 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: 60rpx;
+}
+
+/* ---------------- 图片区 ---------------- */
+.photo-card {
+  position: relative;
+  padding: 32rpx 32rpx 0;
+}
+
+.photo-box {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #eceafb;
+}
+
+.photo {
+  width: 100%;
+  height: 560rpx;
+  display: block;
+}
+
+.photo-retake {
+  position: absolute;
+  right: 24rpx;
+  bottom: 24rpx;
+  padding: 12rpx 28rpx;
+  border-radius: 30rpx;
+  background: rgba(20, 20, 32, 0.55);
+  color: #fff;
+  font-size: 24rpx;
+}
+
+.photo-empty {
+  height: 480rpx;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(150deg, #f1ecff 0%, #e8f6ea 100%);
+  border: 2rpx dashed #d3caff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-empty-icon {
+  font-size: 96rpx;
+  line-height: 1;
+}
+
+.photo-empty-title {
+  margin-top: 26rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.photo-empty-desc {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: var(--muted);
+}
+
+.photo-loading {
+  position: absolute;
+  left: 32rpx;
+  right: 32rpx;
+  top: 32rpx;
+  bottom: 0;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: var(--brand);
+}
+
+/* ---------------- 表单 ---------------- */
+.block {
+  margin-bottom: 36rpx;
+}
+
+.block-label {
+  margin-bottom: 18rpx;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.req {
+  color: var(--danger);
+}
+
+.opt-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.ph {
+  color: #b9bdcb;
+  font-size: 28rpx;
+}
+
+.tag-add {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-top: 22rpx;
+}
+
+.tag-input {
+  flex: 1;
+  height: 80rpx;
+}
+
+.tag-add-btn {
+  flex-shrink: 0;
+  height: 80rpx;
+  padding: 0 36rpx;
+  border-radius: 40rpx;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 26rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.textarea-box {
+  background: #fff;
+  border-radius: var(--radius-md);
+  border: 1rpx solid var(--line);
+  padding: 26rpx 28rpx;
+  min-height: 140rpx;
+}
+
+.textarea-box textarea {
+  width: 100%;
+  font-size: 28rpx;
+  line-height: 1.6;
+  min-height: 88rpx;
+}
+
+.save-btn {
+  margin-top: 48rpx;
+}
+
+.del-btn {
+  margin-top: 24rpx;
+  color: var(--danger);
+  border-color: #ffe1e2;
+}

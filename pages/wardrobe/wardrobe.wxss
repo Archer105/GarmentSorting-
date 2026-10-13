@@ -1,0 +1,132 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: 180rpx;
+}
+
+/* ---------------- 头部 ---------------- */
+.head {
+  background: #fff;
+  padding: 20rpx 32rpx 24rpx;
+  border-radius: 0 0 32rpx 32rpx;
+  box-shadow: 0 8rpx 24rpx rgba(31, 34, 51, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.search-field {
+  height: 84rpx;
+  background: #f5f5f9;
+  border-color: transparent;
+  border-radius: 42rpx;
+}
+
+.search-icon {
+  font-size: 26rpx;
+  margin-right: 14rpx;
+  opacity: 0.6;
+}
+
+.clear {
+  padding: 0 8rpx;
+  color: var(--muted);
+  font-size: 24rpx;
+}
+
+.ph {
+  color: #b9bdcb;
+  font-size: 27rpx;
+}
+
+.cat-scroll {
+  margin-top: 22rpx;
+  white-space: nowrap;
+}
+
+.cat-list {
+  display: inline-flex;
+  gap: 16rpx;
+}
+
+/* ---------------- 网格 ---------------- */
+.body {
+  padding: 28rpx 32rpx 0;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.g-item {
+  width: 48.5%;
+  margin-bottom: 28rpx;
+}
+
+.g-img-wrap {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #f1f1f7;
+}
+
+.g-img {
+  width: 100%;
+  height: 320rpx;
+  display: block;
+}
+
+.g-cat {
+  position: absolute;
+  left: 16rpx;
+  bottom: 16rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  background: rgba(20, 20, 32, 0.5);
+  color: #fff;
+  font-size: 21rpx;
+}
+
+.g-name {
+  margin-top: 16rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.g-meta {
+  margin-top: 6rpx;
+  font-size: 23rpx;
+  color: var(--muted);
+}
+
+/* ---------------- 空状态 ---------------- */
+.empty-emoji {
+  font-size: 96rpx;
+  line-height: 1;
+}
+
+.empty-btn {
+  margin: 40rpx auto 0;
+  width: 340rpx;
+}
+
+/* ---------------- 悬浮按钮 ---------------- */
+.fab {
+  position: fixed;
+  right: 40rpx;
+  bottom: calc(60rpx + env(safe-area-inset-bottom));
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b6bff, #5f3ff0);
+  color: #fff;
+  font-size: 60rpx;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 16rpx 36rpx rgba(107, 78, 255, 0.4);
+  z-index: 20;
+}

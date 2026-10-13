@@ -1,0 +1,68 @@
+<view class="chat-page">
+  <!-- 上下文条 -->
+  <view class="ctx-bar">
+    <view class="ctx-left">
+      <view class="ctx-title">小衣 · 你的穿搭顾问</view>
+      <view class="ctx-sub">已读取衣橱 {{garmentCount}} 件{{weatherLabel ? ' · ' + weatherLabel : ''}}</view>
+    </view>
+    <view class="ctx-clear" bindtap="onClear">清空</view>
+  </view>
+
+  <!-- 消息区 -->
+  <scroll-view
+    class="msg-scroll"
+    scroll-y
+    scroll-into-view="{{scrollTo}}"
+    scroll-with-animation
+    enable-flex
+  >
+    <view class="msg-list">
+      <view wx:if="{{!messages.length}}" class="intro">
+        <view class="intro-emoji">👗</view>
+        <view class="intro-title">想问点什么？</view>
+        <view class="intro-desc">我会结合你的衣橱和今天的天气来回答</view>
+        <view class="quick-wrap">
+          <view
+            wx:for="{{quickPrompts}}"
+            wx:key="*this"
+            class="quick-item"
+            data-q="{{item}}"
+            bindtap="onQuick"
+          >{{item}}</view>
+        </view>
+      </view>
+
+      <view
+        wx:for="{{messages}}"
+        wx:key="key"
+        id="{{item.key}}"
+        class="msg-row {{item.role === 'user' ? 'me' : 'ai'}}"
+      >
+        <view wx:if="{{item.role === 'assistant'}}" class="avatar">衣</view>
+        <view class="bubble {{item.role === 'user' ? 'bubble-me' : 'bubble-ai'}}">
+          <text wx:if="{{item.content}}">{{item.content}}</text>
+          <text wx:else class="typing">正在思考…</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 输入区 -->
+  <view class="input-bar">
+    <view class="input-box">
+      <input
+        value="{{draft}}"
+        placeholder="说说你想穿什么场合、什么感觉…"
+        placeholder-class="ph"
+        bindinput="onDraft"
+        bindconfirm="onSend"
+        confirm-type="send"
+        adjust-position
+      />
+    </view>
+    <view class="send-btn {{sending || !draft ? 'disabled' : ''}}" bindtap="onSend">
+      {{sending ? '…' : '发送'}}
+    </view>
+  </view>
+  <view class="safe-bottom"></view>
+</view>
