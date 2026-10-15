@@ -4,25 +4,29 @@
  * 取数策略（从快到慢）：
  *   1. 缓存命中  —— 同一城市 + 同一日期在有效期内直接返回，毫秒级；
  *   2. 本地气候估算（utils/climate.js）—— 同步计算，毫秒级，标记 source='local'；
- *   3. 后台精修 refineWeather() —— 若配置了第三方天气接口就用实时数据，
- *      否则交给大模型按气候常识估算（较慢，但不再阻塞界面），成功后写入缓存。
+ *   3. 后台精修 refineWeather() —— 优先调用腾讯位置服务拿实时天气（已备案域名，无需自建中转），
+ *      失败或尚未配置 key 时交给大模型按气候常识估算，成功后写入缓存。
  *
- * 手动设置的天气优先级最高，且直接落缓存。
+ * 天气数据源：默认接入腾讯位置服务（apis.map.qq.com）。
+ *   启用：在 utils/config.js 填入 TENCENT_LBS_KEY；并在微信公众平台「开发管理 → 服务器域名
+ *   → request 合法域名」加入 https://apis.map.qq.com 。
+ *   不填 key 时自动走「本地气候估算 + AI 精修」兜底，不影响其它功能。
  *
  * 注意：微信小程序只能请求「request 合法域名」白名单内的地址。WorkBuddy 托管发布只
- * 会自动登记云服务网关，不会登记第三方天气接口，所以想在真机拿实时天气需要：
- *   把 PROVIDER.url 换成你自己的天气接口，并在微信公众平台「开发管理 → 服务器域名」
- *   加入白名单。未配置时自动走本地估算 + AI 精修。
+ * 会自动登记云服务网关，不会登记第三方天气接口，所以真机拿实时天气必须在公众平台加白名单。
  */
 const { estimateWeather } = require('./ai')
 const { estimateLocal } = require('./climate')
 const { WEATHER_MAP, TEMP_MAP, WEATHER_OPTIONS, TEMP_RANGES } = require('./constants')
 const { formatDate } = require('./util')
+const { TENCENT_LBS_KEY } = require('./config')
+const { adcodeOf } = require('./citydb')
 
+const TENCENT_WEATHER_URL = 'https://apis.map.qq.com/ws/weather/v1/'
 const PROVIDER = {
-  // 留空即关闭第三方接口；示例：'https://api.vvhan.com/api/weather'
-  url: '',
-  timeout: 3000,
+  // 腾讯位置服务天气接口（已备案域名，需在微信公众平台 request 合法域名白名单）
+  url: TENCENT_WEATHER_URL,
+  timeout: 5000,
 }
 
 const CACHE_KEY = 'wb_weather_cache_v2'
@@ -145,42 +149,6 @@ function tempLabelOf(key) {
   return found ? found.label : ''
 }
 
-/** 从第三方接口响应里尽量抽取天气与温度 */
-function parseProviderPayload(payload) {
-  if (!payload || typeof payload !== 'object') return null
-  const source = payload.data && typeof payload.data === 'object' ? payload.data : payload
-  const weatherText =
-    source.weather || source.wea || source.type || source.weatherType || source.tianqi || ''
-  const temperature = source.temperature || source.temp || source.tem || source.wendu || ''
-  if (!weatherText && !temperature) return null
-  return { weatherText: weatherText, temperature: temperature }
-}
-
-function requestProvider(city) {
-  return new Promise((resolve) => {
-    if (!PROVIDER.url) {
-      resolve(null)
-      return
-    }
-    wx.request({
-      url: PROVIDER.url,
-      method: 'GET',
-      data: { city: city },
-      timeout: PROVIDER.timeout,
-      success(res) {
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          resolve(null)
-          return
-        }
-        resolve(parseProviderPayload(res.data))
-      },
-      fail() {
-        resolve(null)
-      },
-    })
-  })
-}
-
 /** 统一组装天气对象 */
 function buildData(source, city, date, raw) {
   const input = raw || {}
@@ -196,6 +164,70 @@ function buildData(source, city, date, raw) {
     temperature: input.temperature || tempLabelOf(tempKey),
     desc: input.desc || '',
   }
+}
+
+/* --------------------------- 腾讯位置服务 --------------------------- */
+
+/**
+ * 解析腾讯天气响应：
+ *   today  -> result.realtime.infos.{weather, temperature}
+ *   future -> result.forecast[].day.{weather, temperature}（按日期匹配）
+ * 温度为数字（摄氏度），直接交给 normalizeTempKey。
+ * @returns {{weatherText:string, temperature:(number|string)}|null}
+ */
+function parseTencent(payload, date) {
+  if (!payload || payload.status !== 0 || !payload.result) return null
+  const today = formatDate(new Date())
+  if (date === today) {
+    const rt = payload.result.realtime
+    if (!rt || !rt.infos) return null
+    return { weatherText: rt.infos.weather, temperature: rt.infos.temperature }
+  }
+  const list = payload.result.forecast || []
+  const found = list.find((f) => f.date === date)
+  if (!found || !found.day) return null
+  return { weatherText: found.day.weather, temperature: found.day.temperature }
+}
+
+/**
+ * 调用腾讯位置服务天气接口。
+ * @returns {Promise<{weatherText:string, temperature:string}|null>}
+ */
+function requestProvider(city, date) {
+  return new Promise((resolve) => {
+    if (!TENCENT_LBS_KEY) {
+      resolve(null)
+      return
+    }
+    const adcode = adcodeOf(city)
+    if (!adcode) {
+      resolve(null)
+      return
+    }
+    const isToday = date === formatDate(new Date())
+    wx.request({
+      url: PROVIDER.url,
+      method: 'GET',
+      data: {
+        key: TENCENT_LBS_KEY,
+        adcode: adcode,
+        type: isToday ? 'now' : 'future',
+        get_md: isToday ? undefined : 1,
+        output: 'json',
+      },
+      timeout: PROVIDER.timeout,
+      success(res) {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          resolve(null)
+          return
+        }
+        resolve(parseTencent(res.data, date))
+      },
+      fail() {
+        resolve(null)
+      },
+    })
+  })
 }
 
 /* --------------------------------- 取数 --------------------------------- */
@@ -235,7 +267,7 @@ async function getWeather(opts) {
 }
 
 /**
- * 后台精修：第三方接口优先，其次大模型气候估算。较慢，不阻塞界面。
+ * 后台精修：腾讯位置服务（实时天气）优先，其次大模型气候估算。较慢，不阻塞界面。
  * 成功后会写入缓存，下次打开即为毫秒级。
  * @returns {Promise<{ok:boolean, source?:string, data?:Object, skip?:boolean, message?:string}>}
  */
@@ -249,14 +281,18 @@ async function refineWeather(opts) {
   }
   markAttempt(city, date)
 
-  const remote = await requestProvider(city)
+  const remote = await requestProvider(city, date)
   if (remote) {
+    const temp =
+      remote.temperature === '' || remote.temperature == null
+        ? ''
+        : Number(remote.temperature) + '℃'
     const data = buildData('realtime', city, date, {
       weather: remote.weatherText,
       label: remote.weatherText || labelOf(normalizeWeatherKey(remote.weatherText)),
       temp_key: normalizeTempKey(remote.temperature),
-      temperature: remote.temperature ? String(remote.temperature) : '',
-      desc: '来自天气接口',
+      temperature: temp,
+      desc: '实时天气',
     })
     putCache(city, date, 'realtime', data)
     return { ok: true, source: 'realtime', data: data }
@@ -286,5 +322,6 @@ module.exports = {
   labelOf,
   iconOf,
   tempLabelOf,
+  parseTencent,
   PROVIDER,
 }

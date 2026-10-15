@@ -51,6 +51,7 @@ const climate = require('../utils/climate')
 const tagSvc = require('../utils/tags')
 const weatherSvc = require('../utils/weather')
 const { TEMP_MAP } = require('../utils/constants')
+const { formatDate } = require('../utils/util')
 
 /* ------------------------------ 断言 ------------------------------ */
 
@@ -149,6 +150,31 @@ eq('删除自定义标签', tagSvc.listCustomTags().length, 0)
 check('删除后选项里不再有它', tagSvc.buildTagOptions(['通勤'], []).some((o) => o.name === '露营') === false)
 
 /* --------------------------- weather --------------------------- */
+
+/* 腾讯位置服务天气响应解析（接入腾讯天气后新增） */
+const todayStr = formatDate(new Date())
+const tNow = weatherSvc.parseTencent(
+  { status: 0, result: { realtime: { infos: { weather: '晴', temperature: 20 } } } },
+  todayStr
+)
+eq('腾讯 now 解析天气文案', tNow.weatherText, '晴')
+eq('腾讯 now 解析温度(number)', tNow.temperature, 20)
+
+const tFuture = weatherSvc.parseTencent(
+  {
+    status: 0,
+    result: {
+      forecast: [{ date: '2026-10-16', day: { weather: '小雨', temperature: 18 } }],
+    },
+  },
+  '2026-10-16'
+)
+eq('腾讯 future 按日期匹配天气', tFuture.weatherText, '小雨')
+eq('腾讯 future 解析温度', tFuture.temperature, 18)
+
+eq('腾讯错误状态码返回 null', weatherSvc.parseTencent({ status: 401, message: 'key 无效' }, todayStr), null)
+eq('腾讯缺 result 返回 null', weatherSvc.parseTencent({ status: 0 }, todayStr), null)
+
 
 async function runWeather() {
   const first = await weatherSvc.getWeather({ city: '杭州', date: '2026-10-13' })
