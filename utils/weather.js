@@ -169,24 +169,31 @@ function buildData(source, city, date, raw) {
 /* --------------------------- 腾讯位置服务 --------------------------- */
 
 /**
- * 解析腾讯天气响应：
- *   today  -> result.realtime.infos.{weather, temperature}
- *   future -> result.forecast[].day.{weather, temperature}（按日期匹配）
- * 温度为数字（摄氏度），直接交给 normalizeTempKey。
+ * 解析腾讯天气响应（注意真实接口结构，与文档示例略有差异）：
+ *   today  -> result.realtime 是「数组」，取 [0].infos.{weather, temperature}
+ *             （realtime.infos.temperature 为数字，如 30）
+ *   future -> result.forecast 是「数组」，按 f.date 匹配，取 f.day.{weather, temperature}
+ *             （forecast[].day.temperature 为字符串，如 "30"，normalizeTempKey 会兜底）
+ * 任一层缺失都返回 null，交由上层回退。
  * @returns {{weatherText:string, temperature:(number|string)}|null}
  */
 function parseTencent(payload, date) {
   if (!payload || payload.status !== 0 || !payload.result) return null
   const today = formatDate(new Date())
   if (date === today) {
-    const rt = payload.result.realtime
+    const rtList = payload.result.realtime
+    // realtime 真实为数组：[{ infos: { weather, temperature } }]
+    const rt = Array.isArray(rtList) ? rtList[0] : rtList
     if (!rt || !rt.infos) return null
     return { weatherText: rt.infos.weather, temperature: rt.infos.temperature }
   }
   const list = payload.result.forecast || []
   const found = list.find((f) => f.date === date)
-  if (!found || !found.day) return null
-  return { weatherText: found.day.weather, temperature: found.day.temperature }
+  if (!found) return null
+  // 兼容两种形态：forecast[].day.{weather,temperature} 或 forecast[].{weather,temperature}
+  const day = found.day || found
+  if (!day || !day.weather) return null
+  return { weatherText: day.weather, temperature: day.temperature }
 }
 
 /**
@@ -251,7 +258,10 @@ async function getWeather(opts) {
   if (!options.force) {
     const hit = getCached(city, date)
     if (hit) {
-      return { ok: true, source: hit.source, data: hit.data, cached: true, refinable: false }
+      // 只有「实时 / AI / 手动」才是终态；本地气候估算仍允许后台精修升级，
+      // 否则一旦某次精修失败，30 分钟缓存期内会一直卡在「气候估算」。
+      const refinable = hit.source === 'local' ? !isRefineGated(city, date) : false
+      return { ok: true, source: hit.source, data: hit.data, cached: true, refinable }
     }
   }
 

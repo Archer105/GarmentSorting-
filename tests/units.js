@@ -153,12 +153,19 @@ check('删除后选项里不再有它', tagSvc.buildTagOptions(['通勤'], []).s
 
 /* 腾讯位置服务天气响应解析（接入腾讯天气后新增） */
 const todayStr = formatDate(new Date())
+// 真实接口：result.realtime 是数组，取 [0].infos
 const tNow = weatherSvc.parseTencent(
-  { status: 0, result: { realtime: { infos: { weather: '晴', temperature: 20 } } } },
+  { status: 0, result: { realtime: [{ infos: { weather: '晴', temperature: 20 } }] } },
   todayStr
 )
 eq('腾讯 now 解析天气文案', tNow.weatherText, '晴')
 eq('腾讯 now 解析温度(number)', tNow.temperature, 20)
+// 兼容：个别返回为对象形态的旧用例
+const tNowObj = weatherSvc.parseTencent(
+  { status: 0, result: { realtime: { infos: { weather: '阴', temperature: 15 } } } },
+  todayStr
+)
+eq('腾讯 now 兼容对象形态', tNowObj.weatherText, '阴')
 
 const tFuture = weatherSvc.parseTencent(
   {
