@@ -4,6 +4,10 @@ node_modules/
 # 微信开发者工具本地配置
 project.private.config.json
 
+# 百度网盘同步临时文件（同步客户端生成，勿提交）
+*.baiduyun.uploading.cfg
+*.baiduyun.downloading*
+
 # 系统 / 编辑器
 .DS_Store
 Thumbs.db
