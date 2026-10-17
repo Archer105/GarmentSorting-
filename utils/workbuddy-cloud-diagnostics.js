@@ -46,6 +46,18 @@ function logFailure(options, startedAt, status, data, headers) {
         requestId: responseHeader(headers, 'x-request-id'),
         traceId: responseHeader(headers, 'x-trace-id'),
     }));
+
+    // 域名白名单拦截：这一条不是代码问题，给出可直接照做的说明
+    if (status === 0 && /url not in domain list/i.test(String(message || ''))) {
+        console.warn(
+            '[WorkBuddy Cloud] 云服务网关域名未进入微信白名单。' +
+            'mp-api.app.workbuddy.host 由 WorkBuddy 发布流程统一写入 request/upload/download 白名单，' +
+            '在小程序已授权绑定 WorkBuddy 的情况下，公众平台不允许也无法手工添加。' +
+            '临时验证：开发者工具「详情 → 本地设置」勾选「不校验合法域名…」。' +
+            '真机验证：打开开发版/体验版小程序右上角「…」→「开发调试」开启调试，可跳过域名校验。' +
+            '正式生效：在应用预览面板右上角「分享」完成一次发布（上传代码前会自动写入白名单）。'
+        );
+    }
 }
 
 function createDiagnosticWx(originalWx) {

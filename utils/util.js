@@ -51,10 +51,12 @@ function friendlyMessage(message) {
   // 微信端在本地就拦掉了请求：域名没进 request 合法域名
   if (msg.indexOf('url not in domain list') >= 0) {
     const host = (/:([a-z0-9.-]+\.[a-z]{2,})/i.exec(msg) || [])[1]
+    if (host && host !== 'mp-api.app.workbuddy.host') {
+      return '域名未加入 request 合法域名：' + host
+    }
     return (
-      '云服务域名未加入白名单：请在微信公众平台「开发管理 → 服务器域名 → request 合法域名」' +
-      '加入 https://mp-api.app.workbuddy.host' +
-      (host && host !== 'mp-api.app.workbuddy.host' ? '（被拦截的域名：' + host + '）' : '')
+      '云服务网关域名未生效：mp-api.app.workbuddy.host 由 WorkBuddy 统一管理，无需手工添加。' +
+      '请在应用预览面板点右上角「分享」完成一次发布；本地调试可在开发者工具「详情 → 本地设置」勾选「不校验合法域名」'
     )
   }
   if (msg.indexOf('timeout') >= 0) return '网络超时，请检查网络后重试'
