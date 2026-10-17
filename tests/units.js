@@ -264,6 +264,44 @@ async function runWeather() {
   weatherSvc.clearCache()
   const afterClear = await weatherSvc.getWeather({ city: '杭州', date: '2026-10-13' })
   eq('清缓存后回到本地估算', afterClear.source, 'local')
+
+  /* ---------------- 限流（status 120）与「每次失败都能看到原因」 ---------------- */
+
+  weatherSvc.clearCache()
+  let limitHits = 0
+  wxRequestImpl = (opts) => {
+    limitHits += 1
+    if (!opts || typeof opts.success !== 'function') return
+    if (limitHits === 1) {
+      // 第一次被限流：模拟腾讯 status 120
+      opts.success({ statusCode: 200, data: { status: 120, message: '此key每秒请求量已达到上限' } })
+      return
+    }
+    opts.success({
+      statusCode: 200,
+      data: { status: 0, result: { realtime: [{ infos: { weather: '晴', temperature: 26 } }] } },
+    })
+  }
+  const retried = await weatherSvc.refineWeather({ city: '成都', date: todayStr, force: true })
+  eq('status 120 自动退避重试后成功', retried.ok && retried.source, 'realtime')
+  eq('限流重试只多发一次请求', limitHits, 2)
+
+  // 实时源和 AI 兜底都失败：原因必须写进返回体并持久化
+  weatherSvc.clearCache()
+  aiNextResult = { ok: false, message: 'AI 不可用' }
+  wxRequestImpl = (opts) => {
+    if (opts && typeof opts.fail === 'function') opts.fail({ errMsg: 'request:fail timeout' })
+  }
+  const failed = await weatherSvc.refineWeather({ city: '西安', date: '2026-10-13' })
+  check('实时源与 AI 都失败时返回失败', failed.ok === false, failed)
+  eq('失败原因写进返回体', /timeout/.test(failed.error || ''), true)
+
+  const afterFail = await weatherSvc.getWeather({ city: '西安', date: '2026-10-13' })
+  eq('冷却期内不再发请求', afterFail.refinable, false)
+  eq('冷却期内仍能带出失败原因', /timeout/.test(afterFail.refineError || ''), true)
+
+  const forcedAgain = await weatherSvc.getWeather({ city: '西安', date: '2026-10-13', force: true })
+  eq('主动刷新可跳过冷却', forcedAgain.refinable, true)
 }
 
 runWeather()

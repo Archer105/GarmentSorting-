@@ -43,6 +43,20 @@ const TTL = {
 
 /** 精修（AI/接口）失败后的冷却时间，避免反复打接口 */
 const REFINE_GATE = 30 * 60 * 1000
+/** 腾讯「每秒请求量已达上限」是瞬时限流：只短暂退避，不能按 30 分钟冷却处理 */
+const RATE_LIMIT_GATE = 8 * 1000
+/** 腾讯免费 key 的 QPS 很低：全局串行 + 最小间隔，避免自己把自己打到 120 */
+const MIN_REQUEST_INTERVAL = 1200
+const RATE_LIMIT_STATUS = 120
+const DAILY_LIMIT_STATUS = 121
+
+/** 腾讯业务错误码 -> 可读文案 */
+const BIZ_ERROR_TEXT = {
+  120: '此 key 每秒请求量已达上限，腾讯地图免费 key 的 QPS 限制',
+  121: '此 key 今日调用量已达上限',
+  311: 'key 格式错误或签名校验未通过',
+  306: '请求参数有误',
+}
 
 /* ------------------------------- 本地缓存 ------------------------------- */
 
@@ -91,16 +105,56 @@ function putCache(city, date, source, data) {
   writeMap(CACHE_KEY, map)
 }
 
-function isRefineGated(city, date) {
+/**
+ * 精修尝试记录：{ ts, error, status }。
+ * 必须持久化失败原因 —— 否则界面只在「真的发出请求的那一次」能看到报错，
+ * 后续刷新一旦被冷却拦住就再也拿不到原因。
+ */
+function readAttempt(city, date) {
   const map = readMap(ATTEMPT_KEY)
-  const ts = map[cacheKey(city, date)]
-  return !!ts && Date.now() - ts < REFINE_GATE
+  const raw = map[cacheKey(city, date)]
+  if (!raw) return null
+  // 兼容 v1 旧格式（只存时间戳）
+  if (typeof raw === 'number') return { ts: raw, error: '', status: 0 }
+  return raw
 }
 
-function markAttempt(city, date) {
+/** 限流只冷却几秒，其它失败按 30 分钟冷却 */
+function gateMsOf(status) {
+  if (status === RATE_LIMIT_STATUS || status === DAILY_LIMIT_STATUS) return RATE_LIMIT_GATE
+  return REFINE_GATE
+}
+
+/** 限流只冷却几秒，其它失败按 30 分钟冷却；用户主动刷新（force）可跳过冷却 */
+function isRefineGated(city, date, force) {
+  const entry = readAttempt(city, date)
+  if (!entry || !entry.ts) return false
+  // 当日额度用完：再刷也没用，force 也不放行
+  if (entry.status === DAILY_LIMIT_STATUS) return Date.now() - entry.ts < REFINE_GATE
+  if (force) return false
+  return Date.now() - entry.ts < gateMsOf(entry.status)
+}
+
+function markAttempt(city, date, info) {
   const map = readMap(ATTEMPT_KEY)
-  map[cacheKey(city, date)] = Date.now()
+  map[cacheKey(city, date)] = {
+    ts: Date.now(),
+    error: (info && info.error) || '',
+    status: (info && info.status) || 0,
+  }
   writeMap(ATTEMPT_KEY, map)
+}
+
+function clearAttempt(city, date) {
+  const map = readMap(ATTEMPT_KEY)
+  delete map[cacheKey(city, date)]
+  writeMap(ATTEMPT_KEY, map)
+}
+
+/** 上次精修的失败原因（持久化），冷却期间也能继续展示 */
+function lastErrorMessage(city, date) {
+  const entry = readAttempt(city, date)
+  return (entry && entry.error) || ''
 }
 
 /* ------------------------------- 归一化 ------------------------------- */
@@ -210,35 +264,54 @@ function getLastRefineError() {
 function bizErrorOf(payload) {
   if (!payload || typeof payload !== 'object') return ''
   if (typeof payload.status === 'number' && payload.status !== 0) {
-    return '接口返回 status ' + payload.status + (payload.message ? '（' + payload.message + '）' : '')
+    const hint = BIZ_ERROR_TEXT[payload.status]
+    const detail = hint || payload.message
+    return '接口返回 status ' + payload.status + (detail ? '（' + detail + '）' : '')
   }
   return ''
 }
 
+/* ------------------- 请求队列：串行 + 限速 + 同参数去重 ------------------- */
+
+let queueTail = Promise.resolve()
+let lastRequestAt = 0
+const inflight = {}
+
 /**
- * 调用腾讯位置服务天气接口。
- * 显式拼接 query（不依赖 wx.request 对 data 的序列化），并记录失败原因。
- * @returns {Promise<{weatherText:string, temperature:(number|string)}|null>}
+ * 把一次腾讯请求排进全局队列：同一时刻只有一个在飞，
+ * 相邻两次至少间隔 MIN_REQUEST_INTERVAL。
+ * 腾讯免费 key 的 QPS 很低，并发（启动预热 + 首页 onShow + 切城市）会直接打成 status 120。
  */
-function requestProvider(city, date) {
+function scheduleRequest(task) {
+  const run = queueTail.then(async () => {
+    const wait = MIN_REQUEST_INTERVAL - (Date.now() - lastRequestAt)
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
+    lastRequestAt = Date.now()
+    return task()
+  })
+  queueTail = run.then(
+    () => undefined,
+    () => undefined
+  )
+  return run
+}
+
+/**
+ * 单次请求，不重试。显式拼接 query（不依赖 wx.request 对 data 的序列化）。
+ * @returns {Promise<{ok:boolean, parsed:Object|null, error:string, status:number}>}
+ */
+function requestOnce(city, date) {
   return new Promise((resolve) => {
-    lastRefineError = ''
-    if (!TENCENT_LBS_KEY) {
-      lastRefineError = '未配置 TENCENT_LBS_KEY'
-      resolve(null)
-      return
-    }
+    const reject = (error, status) =>
+      resolve({ ok: false, parsed: null, error: error, status: status || 0 })
+
+    if (!TENCENT_LBS_KEY) return reject('未配置 TENCENT_LBS_KEY', 0)
     if (typeof wx === 'undefined' || typeof wx.request !== 'function') {
-      lastRefineError = '当前环境没有 wx.request（非真实小程序）'
-      resolve(null)
-      return
+      return reject('当前环境没有 wx.request（非真实小程序）', 0)
     }
     const adcode = adcodeOf(city)
-    if (!adcode) {
-      lastRefineError = '无法解析城市「' + city + '」的 adcode'
-      resolve(null)
-      return
-    }
+    if (!adcode) return reject('无法解析城市「' + city + '」的 adcode', 0)
+
     const isToday = date === formatDate(new Date())
     const maskedKey = TENCENT_LBS_KEY.slice(0, 6) + '***' + TENCENT_LBS_KEY.slice(-4)
     const url =
@@ -258,22 +331,23 @@ function requestProvider(city, date) {
       timeout: PROVIDER.timeout,
       success(res) {
         if (res.statusCode < 200 || res.statusCode >= 300) {
-          lastRefineError = 'HTTP ' + res.statusCode
           console.warn('[weather] 腾讯返回 HTTP ' + res.statusCode, res.data)
-          resolve(null)
+          const bizStatus = res.data && typeof res.data.status === 'number' ? res.data.status : 0
+          reject(bizErrorOf(res.data) || 'HTTP ' + res.statusCode, bizStatus)
           return
         }
         const parsed = parseTencent(res.data, date)
         if (!parsed) {
-          lastRefineError =
+          const bizStatus = res.data && typeof res.data.status === 'number' ? res.data.status : 0
+          const error =
             bizErrorOf(res.data) ||
             '返回体缺少天气字段（type=' + (isToday ? 'now' : 'future') + '，adcode=' + adcode + '）'
-          console.warn('[weather] 腾讯返回无法解析：' + lastRefineError, res.data)
-          resolve(null)
+          console.warn('[weather] 腾讯返回无法解析：' + error, res.data)
+          reject(error, bizStatus)
           return
         }
         console.info('[weather] 腾讯实时源成功：' + parsed.weatherText + ' ' + parsed.temperature + '℃')
-        resolve(parsed)
+        resolve({ ok: true, parsed: parsed, error: '', status: 0 })
       },
       fail(err) {
         const msg = (err && err.errMsg) || '未知网络错误'
@@ -285,18 +359,57 @@ function requestProvider(city, date) {
         }
         // url not in domain list = request 合法域名没生效，给出可直接照做的指引
         if (msg.indexOf('url not in domain list') >= 0) {
-          lastRefineError =
+          reject(
             '域名未加入 request 合法域名（当前运行 appid=' + (appid || '未知') + '）。' +
-            '请到 微信公众平台→开发管理→开发设置→服务器域名→request 合法域名，' +
-            '添加 https://apis.map.qq.com 并保存，然后重新编译/重新扫码。'
+              '请到 微信公众平台→开发管理→开发设置→服务器域名→request 合法域名，' +
+              '添加 https://apis.map.qq.com 并保存，然后重新编译/重新扫码。',
+            0
+          )
         } else {
-          lastRefineError = '请求失败：' + msg + (appid ? '（当前 appid=' + appid + '）' : '')
+          reject('请求失败：' + msg + (appid ? '（当前 appid=' + appid + '）' : ''), 0)
         }
-        console.warn('[weather] 腾讯请求失败：' + lastRefineError)
-        resolve(null)
+        console.warn('[weather] 腾讯请求失败：' + msg)
       },
     })
   })
+}
+
+/** status 120 是「每秒请求量」瞬时限流：退避一次再试，不直接判死 */
+function doRequest(city, date) {
+  return requestOnce(city, date).then((res) => {
+    if (res.status !== RATE_LIMIT_STATUS) return res
+    return new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_INTERVAL)).then(() =>
+      requestOnce(city, date)
+    )
+  })
+}
+
+/**
+ * 对外入口：同 city+date 复用同一个在飞请求，再排进限速队列。
+ * @returns {Promise<{ok:boolean, parsed:Object|null, error:string, status:number}>}
+ */
+function requestProvider(city, date) {
+  const key = cacheKey(city, date)
+  if (inflight[key]) return inflight[key]
+
+  const promise = scheduleRequest(() => doRequest(city, date)).then(
+    (res) => {
+      delete inflight[key]
+      lastRefineError = res.ok ? '' : res.error
+      return res
+    },
+    (error) => {
+      delete inflight[key]
+      return {
+        ok: false,
+        parsed: null,
+        error: '请求异常：' + ((error && error.message) || '未知错误'),
+        status: 0,
+      }
+    }
+  )
+  inflight[key] = promise
+  return promise
 }
 
 /* --------------------------------- 取数 --------------------------------- */
@@ -321,9 +434,17 @@ async function getWeather(opts) {
     const hit = getCached(city, date)
     if (hit) {
       // 只有「实时 / AI / 手动」才是终态；本地气候估算仍允许后台精修升级，
-      // 否则一旦某次精修失败，30 分钟缓存期内会一直卡在「气候估算」。
+      // 否则一旦某次精修失败，冷却期内会一直卡在「气候估算」。
       const refinable = hit.source === 'local' ? !isRefineGated(city, date) : false
-      return { ok: true, source: hit.source, data: hit.data, cached: true, refinable }
+      return {
+        ok: true,
+        source: hit.source,
+        data: hit.data,
+        cached: true,
+        refinable: refinable,
+        // 冷却期内不再发请求，但失败原因要能继续展示（否则报错只在第一次刷新时出现）
+        refineError: hit.source === 'local' ? lastErrorMessage(city, date) : '',
+      }
     }
   }
 
@@ -334,7 +455,8 @@ async function getWeather(opts) {
     source: 'local',
     data: localData,
     cached: false,
-    refinable: !isRefineGated(city, date),
+    refinable: !isRefineGated(city, date, options.force),
+    refineError: lastErrorMessage(city, date),
   }
 }
 
@@ -348,30 +470,40 @@ async function refineWeather(opts) {
   const city = options.city || '北京'
   const date = options.date || formatDate(new Date())
 
-  if (!options.force && isRefineGated(city, date)) {
-    return { ok: false, skip: true, message: '刚刚更新过' }
+  if (isRefineGated(city, date, options.force)) {
+    const lastError = lastErrorMessage(city, date)
+    return {
+      ok: false,
+      skip: true,
+      error: lastError,
+      message: lastError ? '实时源失败：' + lastError : '刚刚更新过',
+    }
   }
-  markAttempt(city, date)
 
   const remote = await requestProvider(city, date)
-  if (remote) {
+  if (remote && remote.ok && remote.parsed) {
+    const parsed = remote.parsed
     const temp =
-      remote.temperature === '' || remote.temperature == null
+      parsed.temperature === '' || parsed.temperature == null
         ? ''
-        : Number(remote.temperature) + '℃'
+        : Number(parsed.temperature) + '℃'
     const data = buildData('realtime', city, date, {
-      weather: remote.weatherText,
-      label: remote.weatherText || labelOf(normalizeWeatherKey(remote.weatherText)),
-      temp_key: normalizeTempKey(remote.temperature),
+      weather: parsed.weatherText,
+      label: parsed.weatherText || labelOf(normalizeWeatherKey(parsed.weatherText)),
+      temp_key: normalizeTempKey(parsed.temperature),
       temperature: temp,
       desc: '实时天气',
     })
     putCache(city, date, 'realtime', data)
+    clearAttempt(city, date)
     return { ok: true, source: 'realtime', data: data }
   }
 
-  // 腾讯实时源失败：立即回调，让界面马上显示原因（不必等 AI 兜底跑完）
-  const tencentErr = lastRefineError
+  // 腾讯实时源失败：先把「原因 + 业务状态码」持久化，再立刻回调让界面马上显示
+  const tencentErr = (remote && remote.error) || lastRefineError || '未知原因'
+  const bizStatus = (remote && remote.status) || 0
+  markAttempt(city, date, { error: tencentErr, status: bizStatus })
+
   if (typeof options.onTencentFail === 'function' && tencentErr) {
     try {
       options.onTencentFail(tencentErr)
@@ -379,22 +511,19 @@ async function refineWeather(opts) {
       // 回调异常不影响主流程
     }
   }
+
   const estimated = await estimateWeather(city, date)
   if (estimated.ok) {
     const data = buildData('ai', city, date, estimated.data)
     putCache(city, date, 'ai', data)
-    return {
-      ok: true,
-      source: 'ai',
-      data: data,
-      message: tencentErr ? '实时源失败：' + tencentErr : '',
-    }
+    return { ok: true, source: 'ai', data: data, error: tencentErr, message: '实时源失败：' + tencentErr }
   }
   return {
     ok: false,
+    error: tencentErr,
     message:
       '实时源失败：' +
-      (tencentErr || '未知原因') +
+      tencentErr +
       (estimated.message ? '；AI 兜底也失败：' + estimated.message : '；AI 兜底也失败'),
   }
 }
@@ -416,5 +545,6 @@ module.exports = {
   tempLabelOf,
   parseTencent,
   getLastRefineError,
+  lastErrorMessage,
   PROVIDER,
 }

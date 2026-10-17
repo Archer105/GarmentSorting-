@@ -152,19 +152,27 @@ Page({
           return
         }
         this.applyWeather(res.source, res.data)
-        if (res.refinable) this.refine(city, date)
+        if (res.refinable) {
+          this.refine(city, date, force)
+        } else if (res.refineError) {
+          // 冷却期内不再发请求，但上次的失败原因必须继续显示出来
+          this.setData({ weatherDiag: '实时源失败：' + res.refineError })
+        }
       })
       .catch(() => {
         this.setData({ weatherLoading: false })
       })
   },
 
-  refine(city, date) {
+  refine(city, date, force) {
+    // 已经有一次精修在跑：不叠加新请求（腾讯免费 key QPS 很低，叠加必被限流）
+    if (this.data.refining) return
     this.setData({ refining: true })
     weatherSvc
       .refineWeather({
         city: city,
         date: date,
+        force: !!force,
         // 腾讯实时源一失败就立刻显示原因（不等 AI 兜底）
         onTencentFail: (msg) => {
           this.setData({ weatherDiag: '实时源失败：' + msg })
@@ -173,15 +181,25 @@ Page({
       .then((res) => {
         this.setData({ refining: false })
         if (!res) return
-        // 实时源失败（即使 AI 兜底成功）都把原因显示出来，便于确认为何不是「实时」
-        if (res.message) this.setData({ weatherDiag: res.message })
+        // 实时源失败（即使 AI 兜底成功、或被冷却跳过）都把原因显示出来，
+        // 保证「每次获取失败都看得到」，而不是只有第一次刷新才出现
+        if (res.error) {
+          this.setData({ weatherDiag: '实时源失败：' + res.error })
+        } else if (res.message && !res.ok) {
+          this.setData({ weatherDiag: res.message })
+        }
         if (!res.ok) return
         // 期间用户可能换了城市/日期，或手动设置了天气 —— 这些情况下丢弃后台结果
         if (this.data.city !== city || this.currentDate() !== date) return
         if (this.data.weather && this.data.weather.source === 'manual') return
         this.applyWeather(res.source, res.data)
       })
-      .catch(() => this.setData({ refining: false }))
+      .catch((error) => {
+        this.setData({
+          refining: false,
+          weatherDiag: '实时源失败：' + util.errText(error, '未知错误'),
+        })
+      })
   },
 
   onRefreshWeather() {
