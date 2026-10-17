@@ -44,9 +44,35 @@ function hideLoading() {
   wx.hideLoading()
 }
 
+/** 云服务请求的常见底层错误 -> 可照做的中文提示 */
+function friendlyMessage(message) {
+  const msg = String(message || '')
+  if (!msg) return ''
+  // 微信端在本地就拦掉了请求：域名没进 request 合法域名
+  if (msg.indexOf('url not in domain list') >= 0) {
+    const host = (/:([a-z0-9.-]+\.[a-z]{2,})/i.exec(msg) || [])[1]
+    return (
+      '云服务域名未加入白名单：请在微信公众平台「开发管理 → 服务器域名 → request 合法域名」' +
+      '加入 https://mp-api.app.workbuddy.host' +
+      (host && host !== 'mp-api.app.workbuddy.host' ? '（被拦截的域名：' + host + '）' : '')
+    )
+  }
+  if (msg.indexOf('timeout') >= 0) return '网络超时，请检查网络后重试'
+  if (msg.indexOf('ERR_NETWORK') >= 0 || msg.indexOf('网络') >= 0 && msg.indexOf('失败') >= 0) {
+    return '网络异常，请检查网络后重试'
+  }
+  return ''
+}
+
 /** 把错误对象转成用户可读的一句话 */
 function errText(error, fallback) {
   if (!error) return fallback || '操作失败，请重试'
+  if (typeof error === 'string') {
+    return friendlyMessage(error) || error
+  }
+  const raw = typeof error.message === 'string' ? error.message : ''
+  const friendly = friendlyMessage(raw)
+  if (friendly) return friendly
   const code = error.code || (error.error && error.error.code)
   if (code === '23505') return '该内容已存在'
   if (code === '42501') return '没有权限执行该操作'

@@ -79,14 +79,20 @@ Page({
     if (this.data.wechatLoading) return
     if (!this.ensureAgreed()) return
     this.setData({ wechatLoading: true })
-    auth.signInWithWechat().then((res) => {
-      this.setData({ wechatLoading: false })
-      if (!res.ok) {
-        util.toast(res.message || '微信登录失败')
-        return
-      }
-      this.enter()
-    })
+    auth
+      .signInWithWechat()
+      .then((res) => {
+        this.setData({ wechatLoading: false })
+        if (!res.ok) {
+          util.toast(util.errText(res.message, '微信登录失败'))
+          return
+        }
+        this.enter()
+      })
+      .catch((error) => {
+        this.setData({ wechatLoading: false })
+        util.toast(util.errText(error, '微信登录失败'))
+      })
   },
 
   onSendCode() {
@@ -97,16 +103,22 @@ Page({
       return
     }
     this.setData({ sending: true, phoneError: '' })
-    auth.sendPhoneCode(phone).then((res) => {
-      this.setData({ sending: false })
-      if (!res.ok) {
-        this.setData({ phoneError: res.message || '验证码发送失败' })
+    auth
+      .sendPhoneCode(phone)
+      .then((res) => {
+        this.setData({ sending: false })
+        if (!res.ok) {
+          this.setData({ phoneError: util.errText(res.message, '验证码发送失败') })
+          this.refreshCanSend()
+          return
+        }
+        util.toast('验证码已发送')
+        this.startCountdown()
+      })
+      .catch((error) => {
+        this.setData({ sending: false, phoneError: util.errText(error, '验证码发送失败') })
         this.refreshCanSend()
-        return
-      }
-      util.toast('验证码已发送')
-      this.startCountdown()
-    })
+      })
   },
 
   onSubmit() {
@@ -127,14 +139,20 @@ Page({
       return
     }
     this.setData({ submitting: true })
-    auth.verifyPhoneCode(phone, code).then((res) => {
-      this.setData({ submitting: false })
-      if (!res.ok) {
-        util.toast(res.message || '验证失败，请重试')
-        return
-      }
-      this.enter()
-    })
+    auth
+      .verifyPhoneCode(phone, code)
+      .then((res) => {
+        this.setData({ submitting: false })
+        if (!res.ok) {
+          util.toast(util.errText(res.message, '验证失败，请重试'))
+          return
+        }
+        this.enter()
+      })
+      .catch((error) => {
+        this.setData({ submitting: false })
+        util.toast(util.errText(error, '验证失败，请重试'))
+      })
   },
 
   startCountdown() {

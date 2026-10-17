@@ -99,25 +99,27 @@ Page({
       setTimeout(() => wx.navigateBack(), 450)
     }
 
+    // 云端写失败：本机先生效，不让「选个城市」被网络问题卡死
+    const fallbackLocal = (reason) => {
+      const detail = util.errText(reason, '')
+      if (detail) console.warn('[city] 云端保存失败：' + detail)
+      util.hideLoading()
+      this.setData({ saving: false })
+      app.setSettings({ city: name })
+      app.warmUpWeather(true)
+      util.toast('已在本机切换到 ' + name + '（云端未同步）')
+      setTimeout(() => wx.navigateBack(), 900)
+    }
+
     api
       .saveSettings({ nickname: current.nickname, city: name })
       .then((res) => {
         if (!res.ok) {
-          util.hideLoading()
-          this.setData({ saving: false })
-          util.toast(res.message || '保存失败')
+          fallbackLocal(res.message)
           return
         }
         done()
       })
-      .catch(() => {
-        util.hideLoading()
-        this.setData({ saving: false })
-        // 云端写失败也先在本机生效，避免「选了却没反应」
-        app.setSettings({ city: name })
-        app.warmUpWeather(true)
-        util.toast('已在本机切换，云端同步失败')
-        setTimeout(() => wx.navigateBack(), 700)
-      })
+      .catch((error) => fallbackLocal(error))
   },
 })

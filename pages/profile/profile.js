@@ -101,17 +101,30 @@ Page({
       return
     }
     this.setData({ saving: true })
-    api.saveSettings({ nickname: nickname }).then((res) => {
-      this.setData({ saving: false })
-      if (!res.ok) {
-        util.toast(res.message || '保存失败')
-        return
-      }
+    const applyLocal = () => {
       app.setSettings({ nickname: nickname })
       this.setData({ editVisible: false })
       this.applyUser({ nickname: nickname, city: this.data.city })
-      util.toast('已保存')
-    })
+    }
+    api
+      .saveSettings({ nickname: nickname })
+      .then((res) => {
+        this.setData({ saving: false })
+        if (!res.ok) {
+          util.toast(util.errText(res.message, '云端未同步，已在本机保存昵称'))
+          applyLocal()
+          return
+        }
+        applyLocal()
+        util.toast('已保存')
+      })
+      .catch((error) => {
+        this.setData({ saving: false })
+        const detail = util.errText(error, '')
+        if (detail) console.warn('[profile] 云端保存昵称失败：' + detail)
+        applyLocal()
+        util.toast('已在本机保存昵称（云端未同步）')
+      })
   },
 
   /* ------------------------------- 记录 ------------------------------- */
