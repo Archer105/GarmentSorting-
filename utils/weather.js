@@ -240,6 +240,7 @@ function requestProvider(city, date) {
       return
     }
     const isToday = date === formatDate(new Date())
+    const maskedKey = TENCENT_LBS_KEY.slice(0, 6) + '***' + TENCENT_LBS_KEY.slice(-4)
     const url =
       PROVIDER.url +
       '?key=' + encodeURIComponent(TENCENT_LBS_KEY) +
@@ -247,6 +248,10 @@ function requestProvider(city, date) {
       '&type=' + (isToday ? 'now' : 'future') +
       (isToday ? '' : '&get_md=1') +
       '&output=json'
+    // 开发者工具控制台可据此确认请求是否真的发出去（key 已打码）
+    console.info(
+      '[weather] 请求腾讯天气 key=' + maskedKey + ' adcode=' + adcode + ' type=' + (isToday ? 'now' : 'future')
+    )
     wx.request({
       url: url,
       method: 'GET',
@@ -254,6 +259,7 @@ function requestProvider(city, date) {
       success(res) {
         if (res.statusCode < 200 || res.statusCode >= 300) {
           lastRefineError = 'HTTP ' + res.statusCode
+          console.warn('[weather] 腾讯返回 HTTP ' + res.statusCode, res.data)
           resolve(null)
           return
         }
@@ -262,15 +268,18 @@ function requestProvider(city, date) {
           lastRefineError =
             bizErrorOf(res.data) ||
             '返回体缺少天气字段（type=' + (isToday ? 'now' : 'future') + '，adcode=' + adcode + '）'
+          console.warn('[weather] 腾讯返回无法解析：' + lastRefineError, res.data)
           resolve(null)
           return
         }
+        console.info('[weather] 腾讯实时源成功：' + parsed.weatherText + ' ' + parsed.temperature + '℃')
         resolve(parsed)
       },
       fail(err) {
         const msg = (err && err.errMsg) || '未知网络错误'
         // url not in domain list = request 合法域名没生效；超时/断网也会到这里
         lastRefineError = '请求失败：' + msg
+        console.warn('[weather] 腾讯请求失败：' + msg)
         resolve(null)
       },
     })
