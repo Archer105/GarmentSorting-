@@ -143,6 +143,15 @@
   color: rgba(255, 255, 255, 0.72);
 }
 
+/* 实时源失败时的诊断提示（仅用于排查，实时成功不显示） */
+.weather-diag {
+  margin-top: 10rpx;
+  font-size: 21rpx;
+  line-height: 1.45;
+  color: rgba(255, 236, 179, 0.95);
+  word-break: break-all;
+}
+
 /* ---------------- 生成按钮 ---------------- */
 .gen-btn {
   margin: 32rpx 0 8rpx;

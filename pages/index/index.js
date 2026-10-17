@@ -21,6 +21,7 @@ Page({
     weatherDesc: '',
     weatherLoading: false,
     refining: false,
+    weatherDiag: '',
     updatedText: '',
     generating: false,
     outfit: null,
@@ -140,7 +141,7 @@ Page({
   autoWeather(force) {
     const city = this.data.city || app.city()
     const date = this.currentDate()
-    this.setData({ weatherLoading: true })
+    this.setData({ weatherLoading: true, weatherDiag: '' })
 
     return weatherSvc
       .getWeather({ city: city, date: date, force: !!force })
@@ -161,10 +162,20 @@ Page({
   refine(city, date) {
     this.setData({ refining: true })
     weatherSvc
-      .refineWeather({ city: city, date: date })
+      .refineWeather({
+        city: city,
+        date: date,
+        // 腾讯实时源一失败就立刻显示原因（不等 AI 兜底）
+        onTencentFail: (msg) => {
+          this.setData({ weatherDiag: '实时源失败：' + msg })
+        },
+      })
       .then((res) => {
         this.setData({ refining: false })
-        if (!res || !res.ok) return
+        if (!res) return
+        // 实时源失败（即使 AI 兜底成功）都把原因显示出来，便于确认为何不是「实时」
+        if (res.message) this.setData({ weatherDiag: res.message })
+        if (!res.ok) return
         // 期间用户可能换了城市/日期，或手动设置了天气 —— 这些情况下丢弃后台结果
         if (this.data.city !== city || this.currentDate() !== date) return
         if (this.data.weather && this.data.weather.source === 'manual') return
@@ -186,6 +197,8 @@ Page({
     this.setData({
       weather: weather,
       weatherDesc: data.desc || '',
+      // 拿到实时天气就清掉诊断提示；其它来源保留上一条，方便看到失败原因
+      weatherDiag: source === 'realtime' ? '' : this.data.weatherDiag,
       updatedText: '更新于 ' + this.clockText(),
     })
     app.globalData.weather = weather

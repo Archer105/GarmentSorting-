@@ -42,6 +42,7 @@
       </view>
       <view wx:if="{{refining}}" class="weather-note">正在后台精修天气数据…</view>
       <view wx:elif="{{updatedText}}" class="weather-note">{{updatedText}} · 每次打开自动更新</view>
+      <view wx:if="{{weatherDiag && !refining}}" class="weather-diag">{{weatherDiag}}</view>
     </view>
 
     <!-- 生成穿搭 -->

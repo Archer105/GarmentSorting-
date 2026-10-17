@@ -17,6 +17,15 @@ const Module = require('module')
 /* ------------------------------ wx stub ------------------------------ */
 
 const storage = {}
+
+// wx.request 的可替换实现：默认模拟「域名未白名单/断网」走 fail 分支，
+// 需要测实时源时可替换为返回腾讯真实结构。
+let wxRequestImpl = function (opts) {
+  if (opts && typeof opts.fail === 'function') {
+    opts.fail({ errMsg: 'request:fail url not in domain list' })
+  }
+}
+
 global.wx = {
   getStorageSync(key) {
     return Object.prototype.hasOwnProperty.call(storage, key) ? storage[key] : ''
@@ -27,7 +36,9 @@ global.wx = {
   removeStorageSync(key) {
     delete storage[key]
   },
-  request() {},
+  request(opts) {
+    return wxRequestImpl(opts)
+  },
 }
 
 /* --------------------- 把 utils/ai 换成假模块 --------------------- */
@@ -192,13 +203,42 @@ async function runWeather() {
 
   const second = await weatherSvc.getWeather({ city: '杭州', date: '2026-10-13' })
   eq('第二次命中缓存', second.cached, true)
-  eq('缓存命中后无需再精修', second.refinable, false)
+  // 本地估算不是终态，命中缓存后仍允许后台精修升级
+  eq('本地估算缓存命中后仍可精修', second.refinable, true)
 
   const forced = await weatherSvc.getWeather({ city: '杭州', date: '2026-10-13', force: true })
   eq('force 跳过缓存', forced.cached, false)
 
   const gated = await weatherSvc.refineWeather({ city: '杭州', date: '2026-10-13' })
   check('精修失败时正常返回失败（不抛异常）', gated.ok === false, gated)
+
+  // 腾讯实时源：真实接口的 result.realtime 是数组，应能解析为 realtime
+  wxRequestImpl = (opts) => {
+    if (opts && typeof opts.success === 'function') {
+      opts.success({
+        statusCode: 200,
+        data: {
+          status: 0,
+          message: 'Success',
+          result: {
+            realtime: [{ adcode: 320100, infos: { weather: '多云', temperature: 30 } }],
+          },
+        },
+      })
+    }
+  }
+  weatherSvc.clearCache()
+  const realtime = await weatherSvc.refineWeather({ city: '南京', date: todayStr })
+  check('腾讯实时数组解析为 realtime', realtime.ok && realtime.source === 'realtime', realtime)
+  eq('实时温度组装为 30℃', realtime.data && realtime.data.temperature, '30℃')
+  eq('实时天气文案保留「多云」', realtime.data && realtime.data.label, '多云')
+  eq('实时结果写入缓存后直接命中', (await weatherSvc.getWeather({ city: '南京', date: todayStr })).source, 'realtime')
+
+  // 恢复默认失败实现，供后续 AI 兜底用例
+  wxRequestImpl = (opts) => {
+    if (opts && typeof opts.fail === 'function') opts.fail({ errMsg: 'request:fail url not in domain list' })
+  }
+  weatherSvc.clearCache()
 
   // 假模块返回成功，精修应该写回缓存
   aiNextResult = {

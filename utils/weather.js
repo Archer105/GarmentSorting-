@@ -197,40 +197,80 @@ function parseTencent(payload, date) {
 }
 
 /**
+ * 最近一次腾讯实时源失败的原因（用于界面/调试暴露真机失败细节）。
+ * 例：'请求失败：request:fail url not in domain list'
+ */
+let lastRefineError = ''
+
+function getLastRefineError() {
+  return lastRefineError
+}
+
+/** 把腾讯业务错误（status!==0）翻译成可读文案 */
+function bizErrorOf(payload) {
+  if (!payload || typeof payload !== 'object') return ''
+  if (typeof payload.status === 'number' && payload.status !== 0) {
+    return '接口返回 status ' + payload.status + (payload.message ? '（' + payload.message + '）' : '')
+  }
+  return ''
+}
+
+/**
  * 调用腾讯位置服务天气接口。
- * @returns {Promise<{weatherText:string, temperature:string}|null>}
+ * 显式拼接 query（不依赖 wx.request 对 data 的序列化），并记录失败原因。
+ * @returns {Promise<{weatherText:string, temperature:(number|string)}|null>}
  */
 function requestProvider(city, date) {
   return new Promise((resolve) => {
+    lastRefineError = ''
     if (!TENCENT_LBS_KEY) {
+      lastRefineError = '未配置 TENCENT_LBS_KEY'
+      resolve(null)
+      return
+    }
+    if (typeof wx === 'undefined' || typeof wx.request !== 'function') {
+      lastRefineError = '当前环境没有 wx.request（非真实小程序）'
       resolve(null)
       return
     }
     const adcode = adcodeOf(city)
     if (!adcode) {
+      lastRefineError = '无法解析城市「' + city + '」的 adcode'
       resolve(null)
       return
     }
     const isToday = date === formatDate(new Date())
+    const url =
+      PROVIDER.url +
+      '?key=' + encodeURIComponent(TENCENT_LBS_KEY) +
+      '&adcode=' + encodeURIComponent(adcode) +
+      '&type=' + (isToday ? 'now' : 'future') +
+      (isToday ? '' : '&get_md=1') +
+      '&output=json'
     wx.request({
-      url: PROVIDER.url,
+      url: url,
       method: 'GET',
-      data: {
-        key: TENCENT_LBS_KEY,
-        adcode: adcode,
-        type: isToday ? 'now' : 'future',
-        get_md: isToday ? undefined : 1,
-        output: 'json',
-      },
       timeout: PROVIDER.timeout,
       success(res) {
         if (res.statusCode < 200 || res.statusCode >= 300) {
+          lastRefineError = 'HTTP ' + res.statusCode
           resolve(null)
           return
         }
-        resolve(parseTencent(res.data, date))
+        const parsed = parseTencent(res.data, date)
+        if (!parsed) {
+          lastRefineError =
+            bizErrorOf(res.data) ||
+            '返回体缺少天气字段（type=' + (isToday ? 'now' : 'future') + '，adcode=' + adcode + '）'
+          resolve(null)
+          return
+        }
+        resolve(parsed)
       },
-      fail() {
+      fail(err) {
+        const msg = (err && err.errMsg) || '未知网络错误'
+        // url not in domain list = request 合法域名没生效；超时/断网也会到这里
+        lastRefineError = '请求失败：' + msg
         resolve(null)
       },
     })
@@ -308,13 +348,33 @@ async function refineWeather(opts) {
     return { ok: true, source: 'realtime', data: data }
   }
 
+  // 腾讯实时源失败：立即回调，让界面马上显示原因（不必等 AI 兜底跑完）
+  const tencentErr = lastRefineError
+  if (typeof options.onTencentFail === 'function' && tencentErr) {
+    try {
+      options.onTencentFail(tencentErr)
+    } catch (e) {
+      // 回调异常不影响主流程
+    }
+  }
   const estimated = await estimateWeather(city, date)
   if (estimated.ok) {
     const data = buildData('ai', city, date, estimated.data)
     putCache(city, date, 'ai', data)
-    return { ok: true, source: 'ai', data: data }
+    return {
+      ok: true,
+      source: 'ai',
+      data: data,
+      message: tencentErr ? '实时源失败：' + tencentErr : '',
+    }
   }
-  return { ok: false, message: estimated.message || '天气精修失败' }
+  return {
+    ok: false,
+    message:
+      '实时源失败：' +
+      (tencentErr || '未知原因') +
+      (estimated.message ? '；AI 兜底也失败：' + estimated.message : '；AI 兜底也失败'),
+  }
 }
 
 /** 清空天气缓存（调试/强制刷新用） */
@@ -333,5 +393,6 @@ module.exports = {
   iconOf,
   tempLabelOf,
   parseTencent,
+  getLastRefineError,
   PROVIDER,
 }
