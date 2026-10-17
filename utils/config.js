@@ -24,6 +24,6 @@ const publicConfig = {
  *   3) 免费额度 6000 次/日（非商业）。
  * 留空时天气继续走「本地气候估算 + AI 精修」兜底，不影响其它功能。
  */
-const TENCENT_LBS_KEY = ''
+const TENCENT_LBS_KEY = 'XSKBZ-KPO6T-YILXE-VUFWZ-BFIVT-BHFKL'
 
 module.exports = { publicConfig, TENCENT_LBS_KEY }
