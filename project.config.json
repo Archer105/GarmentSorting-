@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "./",
   "compileType": "miniprogram",
-  "appid": "touristappid",
+  "appid": "wx9e305cb818d778bd",
   "projectname": "wardrobe-outfit",
   "description": "衣橱穿搭小程序",
   "libVersion": "latest",
