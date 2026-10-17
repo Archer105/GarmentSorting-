@@ -278,8 +278,15 @@ function requestProvider(city, date) {
       fail(err) {
         const msg = (err && err.errMsg) || '未知网络错误'
         // url not in domain list = request 合法域名没生效；超时/断网也会到这里
-        lastRefineError = '请求失败：' + msg
-        console.warn('[weather] 腾讯请求失败：' + msg)
+        let appid = ''
+        try {
+          appid = wx.getAccountInfoSync().miniProgram.appId || ''
+        } catch (e) {
+          appid = ''
+        }
+        lastRefineError =
+          '请求失败：' + msg + (appid ? '（当前运行 appid=' + appid + '）' : '')
+        console.warn('[weather] 腾讯请求失败：' + lastRefineError)
         resolve(null)
       },
     })
