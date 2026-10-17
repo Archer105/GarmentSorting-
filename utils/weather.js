@@ -277,15 +277,21 @@ function requestProvider(city, date) {
       },
       fail(err) {
         const msg = (err && err.errMsg) || '未知网络错误'
-        // url not in domain list = request 合法域名没生效；超时/断网也会到这里
         let appid = ''
         try {
           appid = wx.getAccountInfoSync().miniProgram.appId || ''
         } catch (e) {
           appid = ''
         }
-        lastRefineError =
-          '请求失败：' + msg + (appid ? '（当前运行 appid=' + appid + '）' : '')
+        // url not in domain list = request 合法域名没生效，给出可直接照做的指引
+        if (msg.indexOf('url not in domain list') >= 0) {
+          lastRefineError =
+            '域名未加入 request 合法域名（当前运行 appid=' + (appid || '未知') + '）。' +
+            '请到 微信公众平台→开发管理→开发设置→服务器域名→request 合法域名，' +
+            '添加 https://apis.map.qq.com 并保存，然后重新编译/重新扫码。'
+        } else {
+          lastRefineError = '请求失败：' + msg + (appid ? '（当前 appid=' + appid + '）' : '')
+        }
         console.warn('[weather] 腾讯请求失败：' + lastRefineError)
         resolve(null)
       },
