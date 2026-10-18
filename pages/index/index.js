@@ -208,9 +208,12 @@ Page({
   },
 
   applyWeather(source, data) {
+    // 未来日期拿到的是腾讯的「预报」而非当天实况，来源文案要跟实际一致
+    const isFuture = !!(data && data.date && data.date !== util.formatDate(new Date()))
+    const labelKey = source === 'realtime' && isFuture ? 'forecast' : source
     const weather = Object.assign({}, data, {
       source: source,
-      sourceLabel: C.WEATHER_SOURCE_LABEL[source] || '',
+      sourceLabel: C.WEATHER_SOURCE_LABEL[labelKey] || '',
     })
     this.setData({
       weather: weather,

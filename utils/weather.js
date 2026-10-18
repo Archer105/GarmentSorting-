@@ -285,11 +285,39 @@ function buildData(source, city, date, raw) {
 /* --------------------------- 腾讯位置服务 --------------------------- */
 
 /**
- * 解析腾讯天气响应（注意真实接口结构，与文档示例略有差异）：
+ * 把 result.forecast 摊平成「按天」的日期数组。
+ *
+ * 腾讯真实返回是「城市对象数组」（与文档示例不同，实测 2026-10-18）：
+ *   result.forecast = [{
+ *     province, city, district, adcode, update_time,
+ *     infos: [{ date:'2026-10-19', week, day:{weather,temperature,...}, night:{...} }, ...]
+ *   }]
+ * 即：日期列表在里层 infos，外层每个元素代表一个城市。
+ * 同时兼容扁平形态（forecast 元素自身带 date），以防接口再调整。
+ *
+ * @returns {Array<{date:string, day?:object, night?:object}>}
+ */
+function flattenForecast(result) {
+  const list = result && Array.isArray(result.forecast) ? result.forecast : []
+  const days = []
+  list.forEach((item) => {
+    if (!item || typeof item !== 'object') return
+    if (Array.isArray(item.infos)) {
+      item.infos.forEach((d) => {
+        if (d && d.date) days.push(d)
+      })
+    } else if (item.date) {
+      days.push(item)
+    }
+  })
+  return days
+}
+
+/**
+ * 解析腾讯天气响应（注意真实接口结构，与文档示例有差异）：
  *   today  -> result.realtime 是「数组」，取 [0].infos.{weather, temperature}
- *             （realtime.infos.temperature 为数字，如 30）
- *   future -> result.forecast 是「数组」，按 f.date 匹配，取 f.day.{weather, temperature}
- *             （forecast[].day.temperature 为字符串，如 "30"，normalizeTempKey 会兜底）
+ *   future -> result.forecast[0].infos[] 里按 date 匹配，取 day.{weather, temperature}
+ *             （day.temperature 实测为数字，如 23）
  * 任一层缺失都返回 null，交由上层回退。
  * @returns {{weatherText:string, temperature:(number|string)}|null}
  */
@@ -303,8 +331,8 @@ function parseTencent(payload, date) {
     if (!rt || !rt.infos) return null
     return { weatherText: rt.infos.weather, temperature: rt.infos.temperature }
   }
-  const list = payload.result.forecast || []
-  const found = list.find((f) => f.date === date)
+  const days = flattenForecast(payload.result)
+  const found = days.filter((d) => d.date === date)[0]
   if (!found) return null
   // 兼容两种形态：forecast[].day.{weather,temperature} 或 forecast[].{weather,temperature}
   const day = found.day || found
@@ -401,9 +429,20 @@ function requestOnce(city, date) {
         const parsed = parseTencent(res.data, date)
         if (!parsed) {
           const bizStatus = res.data && typeof res.data.status === 'number' ? res.data.status : 0
-          const error =
-            bizErrorOf(res.data) ||
-            '返回体缺少天气字段（type=' + (isToday ? 'now' : 'future') + '，adcode=' + adcode + '）'
+          let error = bizErrorOf(res.data)
+          if (!error && !isToday) {
+            // 未来天气：区分「日期超出预报范围」与「结构解析失败」，避免误导
+            const days = flattenForecast(res.data && res.data.result)
+            if (days.length) {
+              error =
+                '腾讯预报不含该日期（' + date + '），可查范围 ' +
+                days[0].date + ' ~ ' + days[days.length - 1].date
+            }
+          }
+          if (!error) {
+            error =
+              '返回体缺少天气字段（type=' + (isToday ? 'now' : 'future') + '，adcode=' + adcode + '）'
+          }
           console.warn('[weather] 腾讯返回无法解析：' + error, res.data)
           reject(error, bizStatus)
           return
@@ -583,12 +622,13 @@ async function refineWeather(opts) {
       parsed.temperature === '' || parsed.temperature == null
         ? ''
         : Number(parsed.temperature) + '℃'
+    const isToday = date === formatDate(new Date())
     const data = buildData('realtime', city, date, {
       weather: parsed.weatherText,
       label: parsed.weatherText || labelOf(normalizeWeatherKey(parsed.weatherText)),
       temp_key: normalizeTempKey(parsed.temperature),
       temperature: temp,
-      desc: '实时天气',
+      desc: isToday ? '实时天气' : '天气预报',
     })
     putCache(city, date, 'realtime', data)
     clearAttempt(city, date)
@@ -640,6 +680,7 @@ module.exports = {
   iconOf,
   tempLabelOf,
   parseTencent,
+  flattenForecast,
   getLastRefineError,
   lastErrorMessage,
   quotaBlockedUntil,

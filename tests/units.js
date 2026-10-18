@@ -178,7 +178,44 @@ const tNowObj = weatherSvc.parseTencent(
 )
 eq('腾讯 now 兼容对象形态', tNowObj.weatherText, '阴')
 
+// 腾讯 future 真实结构（实测 2026-10-18）：日期列表在 forecast[0].infos 里
 const tFuture = weatherSvc.parseTencent(
+  {
+    status: 0,
+    message: 'Success',
+    result: {
+      forecast: [
+        {
+          province: '江苏省',
+          city: '无锡市',
+          district: '',
+          adcode: 320200,
+          update_time: '2026-10-18 09:05',
+          infos: [
+            {
+              date: '2026-10-18',
+              week: '星期日',
+              day: { weather: '小雨', temperature: 28 },
+              night: { weather: '中雨', temperature: 19 },
+            },
+            {
+              date: '2026-10-19',
+              week: '星期一',
+              day: { weather: '多云', temperature: 23 },
+              night: { weather: '小雨', temperature: 20 },
+            },
+          ],
+        },
+      ],
+    },
+  },
+  '2026-10-19'
+)
+eq('腾讯 future 从 forecast[0].infos 匹配日期', tFuture && tFuture.weatherText, '多云')
+eq('腾讯 future 解析温度', tFuture && tFuture.temperature, 23)
+
+// 兼容：旧扁平形态（forecast 元素自身带 date）
+const tFutureFlat = weatherSvc.parseTencent(
   {
     status: 0,
     result: {
@@ -187,8 +224,23 @@ const tFuture = weatherSvc.parseTencent(
   },
   '2026-10-16'
 )
-eq('腾讯 future 按日期匹配天气', tFuture.weatherText, '小雨')
-eq('腾讯 future 解析温度', tFuture.temperature, 18)
+eq('腾讯 future 兼容扁平形态', tFutureFlat && tFutureFlat.weatherText, '小雨')
+eq('腾讯 future 扁平形态温度', tFutureFlat && tFutureFlat.temperature, 18)
+
+eq(
+  'flattenForecast 摊平嵌套 infos',
+  weatherSvc.flattenForecast({
+    forecast: [{ adcode: 320200, infos: [{ date: '2026-10-19' }, { date: '2026-10-20' }] }],
+  }).length,
+  2
+)
+eq('腾讯 future 日期超范围返回 null', weatherSvc.parseTencent(
+  {
+    status: 0,
+    result: { forecast: [{ adcode: 320200, infos: [{ date: '2026-10-19', day: { weather: '多云', temperature: 23 } }] }] },
+  },
+  '2026-11-30'
+), null)
 
 eq('腾讯错误状态码返回 null', weatherSvc.parseTencent({ status: 401, message: 'key 无效' }, todayStr), null)
 eq('腾讯缺 result 返回 null', weatherSvc.parseTencent({ status: 0 }, todayStr), null)
