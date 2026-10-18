@@ -5,6 +5,9 @@ const C = require('./utils/constants')
 
 const SETTINGS_STORE_KEY = 'wb_settings_cache_v1'
 
+/** 崩溃弹窗最多弹 3 次，避免错误风暴刷屏 */
+let fatalShown = 0
+
 App({
   globalData: {
     /** 用户偏好：{ nickname, city } */
@@ -34,6 +37,36 @@ App({
       .getSession()
       .catch(() => null)
       .then(() => this.warmUpWeather())
+  },
+
+  /* ------------------------------ 崩溃兜底 ------------------------------ */
+
+  /**
+   * 真机上 JS 崩溃时默认什么都不显示，表现为「白屏」。
+   * 这里把错误弹出来，至少让人知道原因，而不是只能看到一片白。
+   */
+  onError(error) {
+    this.reportFatal('小程序运行报错', error && (error.message || error))
+  },
+
+  onUnhandledRejection(res) {
+    const reason = res && res.reason
+    this.reportFatal(
+      '小程序异步报错',
+      (reason && (reason.message || reason.errMsg)) || reason || '未知错误'
+    )
+  },
+
+  reportFatal(title, detail) {
+    const text = String(detail || '未知错误').slice(0, 300)
+    console.error('[fatal] ' + title + '：' + text)
+    if (fatalShown >= 3) return
+    fatalShown += 1
+    try {
+      wx.showModal({ title: title, content: text, showCancel: false, confirmText: '知道了' })
+    } catch (e) {
+      // 弹窗失败就算了，至少 console 里有
+    }
   },
 
   /* ------------------------------ 用户偏好 ------------------------------ */
