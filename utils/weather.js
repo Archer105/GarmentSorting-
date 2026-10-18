@@ -43,16 +43,21 @@ const TTL = {
 
 /** 精修（AI/接口）失败后的冷却时间，避免反复打接口 */
 const REFINE_GATE = 30 * 60 * 1000
-/** 腾讯「每秒请求量已达上限」是瞬时限流：只短暂退避，不能按 30 分钟冷却处理 */
-const RATE_LIMIT_GATE = 8 * 1000
+/**
+ * 腾讯 120（每秒上限）在「额度耗尽」时也会返回：单发就 120、重试仍 120，
+ * 说明不是瞬时抖动，别再 8 秒一次地硬打，退到 10 分钟。
+ */
+const RATE_LIMIT_GATE = 10 * 60 * 1000
 /** 腾讯免费 key 的 QPS 很低：全局串行 + 最小间隔，避免自己把自己打到 120 */
 const MIN_REQUEST_INTERVAL = 1200
 const RATE_LIMIT_STATUS = 120
 const DAILY_LIMIT_STATUS = 121
+/** 当日额度耗尽的封禁记录（跨页面/重启保持，避免一整天反复打空枪） */
+const QUOTA_KEY = 'wb_weather_quota_v1'
 
 /** 腾讯业务错误码 -> 可读文案 */
 const BIZ_ERROR_TEXT = {
-  120: '此 key 每秒请求量已达上限，腾讯地图免费 key 的 QPS 限制',
+  120: '此 key 每秒请求量已达上限（额度耗尽时也会返回 120）',
   121: '此 key 今日调用量已达上限',
   311: 'key 格式错误或签名校验未通过',
   306: '请求参数有误',
@@ -125,8 +130,10 @@ function gateMsOf(status) {
   return REFINE_GATE
 }
 
-/** 限流只冷却几秒，其它失败按 30 分钟冷却；用户主动刷新（force）可跳过冷却 */
+/** 限流只冷却几分钟，其它失败按 30 分钟冷却；用户主动刷新（force）可跳过冷却 */
 function isRefineGated(city, date, force) {
+  // 当日额度已用尽：force 也不放行，等次日自动解封
+  if (quotaBlockedUntil()) return true
   const entry = readAttempt(city, date)
   if (!entry || !entry.ts) return false
   // 当日额度用完：再刷也没用，force 也不放行
@@ -153,8 +160,63 @@ function clearAttempt(city, date) {
 
 /** 上次精修的失败原因（持久化），冷却期间也能继续展示 */
 function lastErrorMessage(city, date) {
+  // 当日额度已用尽：无论上次记的是什么，都统一给「额度用完」的解释
+  if (quotaBlockedUntil()) return quotaMessage()
   const entry = readAttempt(city, date)
   return (entry && entry.error) || ''
+}
+
+/* ---------------------------- 当日额度封禁 ---------------------------- */
+
+function readQuota() {
+  try {
+    const value = wx.getStorageSync(QUOTA_KEY)
+    return value && typeof value === 'object' ? value : null
+  } catch (e) {
+    return null
+  }
+}
+
+/** 腾讯当日额度是否已用尽；返回封禁截止时间戳，未封禁返回 0 */
+function quotaBlockedUntil() {
+  const quota = readQuota()
+  if (!quota || !quota.until) return 0
+  return quota.until > Date.now() ? quota.until : 0
+}
+
+/** 次日 00:05 自动解封（腾讯额度按自然日重置，留 5 分钟余量） */
+function nextDayTimestamp() {
+  const next = new Date(Date.now() + 86400000)
+  next.setHours(0, 5, 0, 0)
+  return next.getTime()
+}
+
+function markQuotaExhausted(reason) {
+  const until = nextDayTimestamp()
+  try {
+    wx.setStorageSync(QUOTA_KEY, {
+      ts: Date.now(),
+      until: until,
+      day: formatDate(new Date()),
+      reason: reason || '',
+    })
+  } catch (e) {
+    // 存储失败不影响主流程
+  }
+  return until
+}
+
+function clearQuota() {
+  try {
+    wx.removeStorageSync(QUOTA_KEY)
+  } catch (e) {
+    // 忽略
+  }
+}
+
+function quotaMessage() {
+  return '腾讯天气今日调用额度已用完，已改用气候估算（明天 0 点后自动恢复实时）。' +
+    '可在 lbs.qq.com 控制台「配额管理」查看额度，完成个人认证可提升到 6000 次/日'
 }
 
 /* ------------------------------- 归一化 ------------------------------- */
@@ -374,14 +436,32 @@ function requestOnce(city, date) {
   })
 }
 
-/** status 120 是「每秒请求量」瞬时限流：退避一次再试，不直接判死 */
+/** 连续撞到 120 的次数：撞够了就按「额度已耗尽」处理，别再一整天硬打 */
+let rateLimitStreak = 0
+
+/**
+ * status 120 先退避重试一次；121 或连撞 120 则判定当日额度耗尽。
+ * @returns {Promise<{ok:boolean, parsed:Object|null, error:string, status:number}>}
+ */
 function doRequest(city, date) {
-  return requestOnce(city, date).then((res) => {
-    if (res.status !== RATE_LIMIT_STATUS) return res
-    return new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_INTERVAL)).then(() =>
-      requestOnce(city, date)
-    )
-  })
+  return requestOnce(city, date)
+    .then((res) => {
+      if (res.status !== RATE_LIMIT_STATUS) return res
+      return new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_INTERVAL)).then(() =>
+        requestOnce(city, date)
+      )
+    })
+    .then((res) => {
+      if (res.status === DAILY_LIMIT_STATUS) {
+        markQuotaExhausted(res.error)
+      } else if (res.status === RATE_LIMIT_STATUS) {
+        rateLimitStreak += 1
+        if (rateLimitStreak >= 3) markQuotaExhausted(res.error)
+      } else {
+        rateLimitStreak = 0
+      }
+      return res
+    })
 }
 
 /**
@@ -392,10 +472,26 @@ function requestProvider(city, date) {
   const key = cacheKey(city, date)
   if (inflight[key]) return inflight[key]
 
+  // 当日额度已用尽：不再发请求（发了也只有 120/121，还白占额度）
+  if (quotaBlockedUntil()) {
+    const blocked = {
+      ok: false,
+      parsed: null,
+      error: quotaMessage(),
+      status: DAILY_LIMIT_STATUS,
+    }
+    lastRefineError = blocked.error
+    return Promise.resolve(blocked)
+  }
+
   const promise = scheduleRequest(() => doRequest(city, date)).then(
     (res) => {
       delete inflight[key]
       lastRefineError = res.ok ? '' : res.error
+      if (res.ok) {
+        rateLimitStreak = 0
+        clearQuota()
+      }
       return res
     },
     (error) => {
@@ -546,5 +642,7 @@ module.exports = {
   parseTencent,
   getLastRefineError,
   lastErrorMessage,
+  quotaBlockedUntil,
+  clearQuota,
   PROVIDER,
 }

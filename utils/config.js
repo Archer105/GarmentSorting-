@@ -21,9 +21,22 @@ const publicConfig = {
  * 关键配置：
  *   1) 直连调用需在「该 key → 授权 AppID」里填入本小程序的 AppID（或关闭签名校验，不推荐）；
  *   2) 在微信公众平台「开发管理 → 服务器域名 → request 合法域名」加入 https://apis.map.qq.com ；
- *   3) 免费额度 6000 次/日（非商业）。
+ *   3) 额度按自然日重置，用完当天只能走气候估算。
+ *
+ * ⚠️ 密钥**不能**写在本文件里：本仓库是公开仓库，明文提交等于把额度送给爬虫。
+ * 正确做法：把 key 写进 `utils/config.secret.js`（已在 .gitignore 中忽略），
+ * 该文件只在本地/打包时存在，不会进入 GitHub。
+ *
  * 留空时天气继续走「本地气候估算 + AI 精修」兜底，不影响其它功能。
  */
-const TENCENT_LBS_KEY = 'XSKBZ-KPO6T-YILXE-VUFWZ-BFIVT-BHFKL'
+let secret = {}
+try {
+  secret = require('./config.secret')
+} catch (e) {
+  // 没有本地密钥文件：走兜底，不报错
+  secret = {}
+}
+
+const TENCENT_LBS_KEY = (secret && secret.TENCENT_LBS_KEY) || ''
 
 module.exports = { publicConfig, TENCENT_LBS_KEY }

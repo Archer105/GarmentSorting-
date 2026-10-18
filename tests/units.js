@@ -302,6 +302,33 @@ async function runWeather() {
 
   const forcedAgain = await weatherSvc.getWeather({ city: '西安', date: '2026-10-13', force: true })
   eq('主动刷新可跳过冷却', forcedAgain.refinable, true)
+
+  /* ---------------- 当日额度耗尽（121）：必须停手并给出解释 ---------------- */
+
+  weatherSvc.clearCache()
+  weatherSvc.clearQuota()
+  aiNextResult = { ok: false, message: 'AI 不可用' }
+  let quotaHits = 0
+  wxRequestImpl = (opts) => {
+    quotaHits += 1
+    if (opts && typeof opts.success === 'function') {
+      opts.success({ statusCode: 200, data: { status: 121, message: '此key每日调用量已达到上限' } })
+    }
+  }
+  const quotaFail = await weatherSvc.refineWeather({ city: '武汉', date: todayStr, force: true })
+  check('121 判定为当日额度耗尽', quotaFail.ok === false, quotaFail)
+  eq('121 不重试，只发一次请求', quotaHits, 1)
+  eq('额度耗尽后留下封禁记录', weatherSvc.quotaBlockedUntil() > Date.now(), true)
+
+  const blockedAgain = await weatherSvc.refineWeather({ city: '武汉', date: todayStr, force: true })
+  eq('额度耗尽后不再发请求', quotaHits, 1)
+  check('额度耗尽时的提示指向额度', /额度/.test(blockedAgain.error || ''), blockedAgain)
+
+  const gatedView = await weatherSvc.getWeather({ city: '武汉', date: todayStr, force: true })
+  eq('额度耗尽时 force 也不再精修', gatedView.refinable, false)
+  check('界面仍能拿到额度提示', /额度/.test(gatedView.refineError || ''), gatedView)
+
+  weatherSvc.clearQuota()
 }
 
 runWeather()

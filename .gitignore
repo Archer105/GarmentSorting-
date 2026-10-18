@@ -4,6 +4,9 @@ node_modules/
 # 微信开发者工具本地配置
 project.private.config.json
 
+# 本地密钥（腾讯位置服务天气 key 等），绝不提交
+utils/config.secret.js
+
 # 百度网盘同步临时文件（同步客户端生成，勿提交）
 *.baiduyun.uploading.cfg
 *.baiduyun.downloading*
